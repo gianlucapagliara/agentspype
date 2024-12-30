@@ -10,14 +10,16 @@ class Agency:
     @classmethod
     def register_agent(cls, agent: "Agent") -> None:
         """Register an initialized agent."""
-        agent.logger().info(f"[Agency] Registered: {agent.__class__.__name__}")
-        cls.initialized_agents.append(agent)
+        if agent not in cls.initialized_agents:
+            agent.logger().info(f"[Agency] Registered: {agent.__class__.__name__}")
+            cls.initialized_agents.append(agent)
 
     @classmethod
     def deregister_agent(cls, agent: "Agent") -> None:
         """Deregister an initialized agent."""
-        agent.logger().info(f"[Agency] Deregistered: {agent.__class__.__name__}")
-        cls.initialized_agents.remove(agent)
+        if agent in cls.initialized_agents:
+            agent.logger().info(f"[Agency] Deregistered: {agent.__class__.__name__}")
+            cls.initialized_agents.remove(agent)
 
     @classmethod
     def get_active_agents(cls) -> list["Agent"]:

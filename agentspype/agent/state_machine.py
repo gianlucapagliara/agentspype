@@ -84,7 +84,7 @@ class AgentStateMachine(StateMachine, metaclass=AgentStateMachineMeta):
         )
 
     @abstractmethod
-    def after_transition(self, event: str, state: str) -> None:
+    def after_transition(self, event: str, state: State) -> None:
         """Handle behavior after a transition.
 
         This method should be implemented in child classes to handle post-transition behavior.
@@ -129,6 +129,6 @@ class BasicAgentStateMachine(AgentStateMachine):
     It only needs to implement the required after_transition method.
     """
 
-    def after_transition(self, event: str, state: str) -> None:
+    def after_transition(self, event: str, state: State) -> None:
         if isinstance(self.agent.publishing, StateAgentPublishing):
             self.agent.publishing.publish_transition(event, state)
