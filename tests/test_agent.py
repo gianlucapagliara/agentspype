@@ -89,20 +89,8 @@ class MockPublishing(StateAgentPublishing):
     def trigger_event(self, event_publication: Any, event_data: Any) -> None:
         self.published_events.append((event_publication, event_data))
 
-    class StateMachineEvent:
-        def __init__(self, event: str, state: State) -> None:
-            self.event = event
-            self.new_state = state
-
     # Override the event publication to use our mock event class
-    sm_transition_event = type(
-        "EventPublication",
-        (),
-        {
-            "event_tag": StateAgentPublishing.Events.StateMachineTransition,
-            "event_class": StateMachineEvent,
-        },
-    )()
+    sm_transition_event = StateAgentPublishing.sm_transition_event
 
 
 # Define agents with different state machines

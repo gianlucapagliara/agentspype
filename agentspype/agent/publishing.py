@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
@@ -27,6 +28,7 @@ class StateAgentPublishing(AgentPublishing):
     class Events(Enum):
         StateMachineTransition = "sm_transition_event"
 
+    @dataclass
     class StateMachineEvent:
         event: Any
         new_state: State
