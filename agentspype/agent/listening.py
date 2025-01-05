@@ -2,7 +2,7 @@ import logging
 from abc import abstractmethod
 from typing import TYPE_CHECKING
 
-from eventspype.subscribers.multi import MultiSubscriber
+from eventspype.sub.multisubscriber import MultiSubscriber
 
 if TYPE_CHECKING:
     from .agent import Agent

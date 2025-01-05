@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from eventspype.publishers.multi import MultiPublisher
-from eventspype.publishers.publications import EventPublication
+from eventspype.pub.multipublisher import MultiPublisher
+from eventspype.pub.publication import EventPublication
 from statemachine import State
 
 if TYPE_CHECKING:
