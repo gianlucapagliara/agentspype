@@ -1,3 +1,4 @@
+import weakref
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any
@@ -7,19 +8,22 @@ from eventspype.pub.publication import EventPublication
 from statemachine import State
 
 if TYPE_CHECKING:
-    from .agent import Agent
+    from agentspype.agent.agent import Agent
 
 
 class AgentPublishing(MultiPublisher):
     def __init__(self, agent: "Agent") -> None:
         super().__init__()
-        self._agent = agent
+        self._agent = weakref.ref(agent)
 
     # === Properties ===
 
     @property
     def agent(self) -> "Agent":
-        return self._agent
+        agent = self._agent()
+        if agent is None:
+            raise RuntimeError("Agent has been deactivated")
+        return agent
 
 
 class StateAgentPublishing(AgentPublishing):
@@ -50,7 +54,7 @@ class StateAgentPublishing(AgentPublishing):
             def after_transition(self, event, state):
                 self.agent.publishing.publish_transition(event, state)
         """
-        self.trigger_event(
+        self.publish(
             self.sm_transition_event,
             self.sm_transition_event.event_class(event, state),
         )

@@ -1,15 +1,15 @@
 import logging
 from typing import TYPE_CHECKING, Any
 
-from ..agency import Agency
-from .configuration import AgentConfiguration
-from .definition import AgentDefinition
+from agentspype.agency import Agency
+from agentspype.agent.configuration import AgentConfiguration
+from agentspype.agent.definition import AgentDefinition
 
 if TYPE_CHECKING:
-    from .listening import AgentListening
-    from .publishing import AgentPublishing
-    from .state_machine import AgentStateMachine
-    from .status import AgentStatus
+    from agentspype.agent.listening import AgentListening
+    from agentspype.agent.publishing import AgentPublishing
+    from agentspype.agent.state_machine import AgentStateMachine
+    from agentspype.agent.status import AgentStatus
 
 
 class Agent:
@@ -42,7 +42,6 @@ class Agent:
 
     def teardown(self) -> None:
         self.listening.unsubscribe()
-
         Agency.deregister_agent(self)
 
     def clone(self) -> "Agent":
@@ -53,7 +52,7 @@ class Agent:
     @classmethod
     def logger(cls) -> logging.Logger:
         if cls._logger is None:
-            cls._logger = logging.getLogger("agent")
+            cls._logger = logging.getLogger(cls.__name__)
         return cls._logger
 
     # === Properties ===

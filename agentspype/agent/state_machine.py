@@ -1,3 +1,4 @@
+import weakref
 from abc import abstractmethod
 from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
 
@@ -5,10 +6,10 @@ from statemachine import State, StateMachine
 from statemachine.factory import StateMachineMetaclass
 from statemachine.transition_list import TransitionList
 
-from .publishing import StateAgentPublishing
+from agentspype.agent.publishing import StateAgentPublishing
 
 if TYPE_CHECKING:
-    from .agent import Agent
+    from agentspype.agent.agent import Agent
 
 
 T = TypeVar("T", bound="AgentStateMachine")
@@ -63,7 +64,7 @@ class AgentStateMachine(StateMachine, metaclass=AgentStateMachineMeta):
 
     def __init__(self, agent: "Agent") -> None:
         super().__init__()
-        self._agent = agent
+        self._agent = weakref.ref(agent)
         self._should_stop = False
 
     # === State actions ===
@@ -108,17 +109,23 @@ class AgentStateMachine(StateMachine, metaclass=AgentStateMachineMeta):
 
     @property
     def agent(self) -> "Agent":
-        return self._agent
+        agent = self._agent()
+        if agent is None:
+            raise RuntimeError("Agent has been deactivated")
+        return agent
 
     # === Functions ===
+
+    def safe_start(self) -> None:
+        if not self.current_state.initial:
+            return
+        self.start(f=True)
 
     def safe_stop(self) -> None:
         """Safely stop the state machine if not already in final state."""
         if self.current_state.final:
             return
         self.stop(f=True)
-
-    # === Diagrams ===
 
 
 # Example of how to create a concrete state machine:
