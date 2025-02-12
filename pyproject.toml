@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "agentspype"
-version = "0.1.0"
+version = "0.1.1"
 description = "A framework for building agents that interact with the world"
 authors = ["Gianluca Pagliara <pagliara.gianluca@gmail.com>"]
 readme = "README.md"
@@ -10,7 +10,8 @@ python = "^3.13"
 pydantic = "^2.10.4"
 python-statemachine = "^2.5.0"
 pydot = "^3.0.3"
-eventspype = "^1.0.0"
+bidict = "^0.23.1"
+eventspype = "^1.0.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.3"
