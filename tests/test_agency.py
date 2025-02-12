@@ -55,7 +55,7 @@ class MockPublishing(StateAgentPublishing):
         super().__init__(agent)
         self.published_events: list[tuple[Any, Any]] = []
 
-    def trigger_event(self, event_publication: Any, event_data: Any) -> None:
+    def publish(self, event_publication: Any, event_data: Any) -> None:
         self.published_events.append((event_publication, event_data))
 
     sm_transition_event = StateAgentPublishing.sm_transition_event

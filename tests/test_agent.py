@@ -86,7 +86,7 @@ class MockPublishing(StateAgentPublishing):
         super().__init__(agent)
         self.published_events: list[tuple[Any, Any]] = []
 
-    def trigger_event(self, event_publication: Any, event_data: Any) -> None:
+    def publish(self, event_publication: Any, event_data: Any) -> None:
         self.published_events.append((event_publication, event_data))
 
     # Override the event publication to use our mock event class
@@ -242,7 +242,7 @@ def test_agent_logger() -> None:
     """Test agent logger initialization and access."""
     logger = MockAgent.logger()
     assert logger is not None
-    assert logger.name == "agent"
+    assert logger.name == "MockAgent"
     # Test that subsequent calls return the same logger
     assert MockAgent.logger() is logger
 
