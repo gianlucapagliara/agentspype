@@ -47,6 +47,12 @@ class Agent:
     def clone(self) -> "Agent":
         return self.__class__(self.configuration)
 
+    def __del__(self) -> None:
+        try:
+            self.teardown()
+        except Exception:
+            pass
+
     # === Class Methods ===
 
     @classmethod
