@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from typing import TYPE_CHECKING
 
 from bidict import bidict
@@ -14,19 +15,20 @@ class Agency:
     _agent_to_configuration: bidict[type["Agent"], type["AgentConfiguration"]] = (
         bidict()
     )
+    _logger: logging.Logger = logging.getLogger("agentspype.agency")
 
     @classmethod
     def register_agent(cls, agent: "Agent") -> None:
         """Register an initialized agent."""
         if agent not in cls.initialized_agents:
-            agent.logger().info(f"[Agency] Registered: {agent.__class__.__name__}")
+            cls._logger.info(f"[Agency] Registered: {agent.__class__.__name__}")
             cls.initialized_agents.append(agent)
 
     @classmethod
     def deregister_agent(cls, agent: "Agent") -> None:
         """Deregister an initialized agent."""
         if agent in cls.initialized_agents:
-            agent.logger().info(f"[Agency] Deregistered: {agent.__class__.__name__}")
+            cls._logger.info(f"[Agency] Deregistered: {agent.__class__.__name__}")
             cls.initialized_agents.remove(agent)
             cls._deactivating_agents.append(agent)
 
