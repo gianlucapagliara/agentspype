@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "agentspype"
-version = "0.1.4"
+version = "0.1.6"
 description = "A framework for building agents that interact with the world"
 authors = ["Gianluca Pagliara <pagliara.gianluca@gmail.com>"]
 readme = "README.md"
