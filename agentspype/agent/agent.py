@@ -21,7 +21,11 @@ class Agent:
 
     # === Initialization ===
 
-    def __init__(self, configuration: AgentConfiguration | dict[str, Any]):
+    def __init__(
+        self,
+        configuration: AgentConfiguration | dict[str, Any],
+        parent_id: int | None = None,
+    ):
         self._configuration = (
             configuration
             if isinstance(configuration, AgentConfiguration)
@@ -32,6 +36,9 @@ class Agent:
         self._events_listening = self.definition.events_listening_class(self)
         self._state_machine = self.definition.state_machine_class(self)
         self._status = self.definition.status_class()
+
+        self._parent_id: int | None = parent_id
+        self._base_name = self.__class__.__name__
 
         Agency.register_agent(self)
 
@@ -64,6 +71,16 @@ class Agent:
     # === Properties ===
 
     @property
+    def name(self) -> str:
+        return f"AID:{id(self)}|{self._base_name}"
+
+    @property
+    def complete_name(self) -> str:
+        if self._parent_id is None:
+            return f"PID:-|{self.name}"
+        return f"PID:{self.parent_id}|{self.name}"
+
+    @property
     def configuration(self) -> AgentConfiguration:
         return self._configuration
 
@@ -82,3 +99,17 @@ class Agent:
     @property
     def status(self) -> "AgentStatus":
         return self._status
+
+    @property
+    def parent_id(self) -> int | None:
+        return self._parent_id
+
+    @parent_id.setter
+    def parent_id(self, value: int | None) -> None:
+        if value == self._parent_id:
+            return
+
+        if self._parent_id is not None:
+            raise ValueError("Parent ID is already set")
+
+        self._parent_id = value
