@@ -119,7 +119,7 @@ class MockAgent(Agent):
 
 
 @pytest.fixture
-def test_agent() -> Generator[MockAgent, None, None]:
+def test_agent() -> Generator[MockAgent]:
     """Fixture to create a test agent."""
     agent = MockAgent({})
     yield agent

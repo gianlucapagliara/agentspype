@@ -25,6 +25,17 @@ class AgentPublishing(MultiPublisher):
             raise RuntimeError("Agent has been deactivated")
         return agent
 
+    # === Event Definition Support ===
+
+    @classmethod
+    def get_event_definitions(cls) -> dict[str, EventPublication]:
+        """Get all event publications defined in this class."""
+        publications = {}
+        for name, value in cls.__dict__.items():
+            if isinstance(value, EventPublication):
+                publications[name] = value
+        return publications
+
 
 class StateAgentPublishing(AgentPublishing):
     # === Definitions ===

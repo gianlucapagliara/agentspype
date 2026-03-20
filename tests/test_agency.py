@@ -74,7 +74,7 @@ class MockAgent(Agent):
 
 
 @pytest.fixture
-def test_agent() -> Generator[Agent, None, None]:
+def test_agent() -> Generator[Agent]:
     """Fixture to create a test agent."""
     agent = MockAgent({})
     yield agent
@@ -85,7 +85,7 @@ def test_agent() -> Generator[Agent, None, None]:
 
 
 @pytest.fixture(autouse=True)
-def clear_agency() -> Generator[None, None, None]:
+def clear_agency() -> Generator[None]:
     """Clear the Agency's state before and after each test."""
     Agency.initialized_agents.clear()
     yield

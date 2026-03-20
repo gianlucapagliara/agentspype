@@ -6,10 +6,13 @@ from agentspype.agent.configuration import AgentConfiguration
 from agentspype.agent.definition import AgentDefinition
 
 if TYPE_CHECKING:
+    import pydot
+
     from agentspype.agent.listening import AgentListening
     from agentspype.agent.publishing import AgentPublishing
     from agentspype.agent.state_machine import AgentStateMachine
     from agentspype.agent.status import AgentStatus
+    from agentspype.visualization.agent_visualization import AgentVisualization
 
 
 class Agent:
@@ -109,7 +112,159 @@ class Agent:
         if value == self._parent_id:
             return
 
-        if self._parent_id is not None:
+        if value is not None:
             raise ValueError("Parent ID is already set")
 
         self._parent_id = value
+
+    # === Visualization Methods ===
+
+    def _get_visualizer(self) -> "AgentVisualization":
+        """Get the agent visualizer (lazy loaded)."""
+        try:
+            from agentspype.visualization.agent_visualization import AgentVisualization
+
+            return AgentVisualization()
+        except ImportError as e:
+            raise ImportError(
+                "Visualization dependencies not available. "
+                "Please ensure pydot is installed."
+            ) from e
+
+    def visualize(
+        self,
+        save_file: bool = False,
+        filename: str | None = None,
+        output_dir: str = ".diagrams",
+        include_state_machine: bool = True,
+        include_publishing: bool = True,
+        include_listening: bool = True,
+        show_current_state: bool = True,
+        **kwargs: Any,
+    ) -> "pydot.Dot":
+        """Create a comprehensive visualization of the agent.
+
+        Args:
+            save_file: Whether to save the diagram to a file
+            filename: Custom filename for the saved diagram
+            output_dir: Directory to save the diagram
+            include_state_machine: Whether to include state machine visualization
+            include_publishing: Whether to include publishing visualization
+            include_listening: Whether to include listening visualization
+            show_current_state: Whether to highlight the current state
+            **kwargs: Additional arguments passed to visualization components
+
+        Returns:
+            pydot.Dot: The generated diagram
+        """
+        visualizer = self._get_visualizer()
+        return visualizer.visualize(
+            self,
+            save_file=save_file,
+            filename=filename or f"{self.__class__.__name__}_agent",
+            output_dir=output_dir,
+            include_state_machine=include_state_machine,
+            include_publishing=include_publishing,
+            include_listening=include_listening,
+            show_current_state=show_current_state,
+            **kwargs,
+        )
+
+    def visualize_state_machine(
+        self,
+        save_file: bool = False,
+        filename: str | None = None,
+        output_dir: str = ".diagrams",
+        **kwargs: Any,
+    ) -> "pydot.Dot":
+        """Create a visualization of the agent's state machine.
+
+        Args:
+            save_file: Whether to save the diagram to a file
+            filename: Custom filename for the saved diagram
+            output_dir: Directory to save the diagram
+            **kwargs: Additional arguments passed to state machine visualization
+
+        Returns:
+            pydot.Dot: The generated state machine diagram
+        """
+        visualizer = self._get_visualizer()
+        return visualizer.visualize_state_machine_only(
+            self,
+            save_file=save_file,
+            filename=filename,
+            output_dir=output_dir,
+            **kwargs,
+        )
+
+    def visualize_publishing(
+        self,
+        save_file: bool = False,
+        filename: str | None = None,
+        output_dir: str = ".diagrams",
+        **kwargs: Any,
+    ) -> "pydot.Dot":
+        """Create a visualization of the agent's event publishing.
+
+        Args:
+            save_file: Whether to save the diagram to a file
+            filename: Custom filename for the saved diagram
+            output_dir: Directory to save the diagram
+            **kwargs: Additional arguments passed to publishing visualization
+
+        Returns:
+            pydot.Dot: The generated publishing diagram
+        """
+        visualizer = self._get_visualizer()
+        return visualizer.visualize_publishing_only(
+            self,
+            save_file=save_file,
+            filename=filename,
+            output_dir=output_dir,
+            **kwargs,
+        )
+
+    def visualize_listening(
+        self,
+        save_file: bool = False,
+        filename: str | None = None,
+        output_dir: str = ".diagrams",
+        **kwargs: Any,
+    ) -> "pydot.Dot":
+        """Create a visualization of the agent's event listening.
+
+        Args:
+            save_file: Whether to save the diagram to a file
+            filename: Custom filename for the saved diagram
+            output_dir: Directory to save the diagram
+            **kwargs: Additional arguments passed to listening visualization
+
+        Returns:
+            pydot.Dot: The generated listening diagram
+        """
+        visualizer = self._get_visualizer()
+        return visualizer.visualize_listening_only(
+            self,
+            save_file=save_file,
+            filename=filename,
+            output_dir=output_dir,
+            **kwargs,
+        )
+
+    def create_all_diagrams(
+        self, save_files: bool = True, output_dir: str = ".diagrams", **kwargs: Any
+    ) -> dict[str, "pydot.Dot"]:
+        """Create all possible diagrams for the agent.
+
+        Args:
+            save_files: Whether to save all diagrams to files
+            output_dir: Directory to save the diagrams
+            **kwargs: Additional arguments passed to visualization components
+
+        Returns:
+            Dict[str, pydot.Dot]: Dictionary mapping diagram names to pydot.Dot objects
+        """
+        visualizer = self._get_visualizer()
+        return visualizer.create_component_diagrams(
+            self, save_files=save_files, output_dir=output_dir, **kwargs
+        )
