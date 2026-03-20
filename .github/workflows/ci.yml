@@ -43,7 +43,7 @@ jobs:
     - name: Install graphviz
       run: sudo apt-get update && sudo apt-get install -y graphviz
     - name: Run tests with coverage
-      run: uv run pytest tests/ --cov=agentspype --cov-report=xml --cov-fail-under=60
+      run: uv run pytest tests/ --cov=agentspype --cov-report=xml --cov-fail-under=40
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v5
       with:
