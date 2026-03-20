@@ -1,0 +1,48 @@
+site_name: AgentsPype
+site_url: https://gianlucapagliara.github.io/agentspype/
+site_description: A framework for building event-driven agents with state machines in Python
+site_author: Gianluca Pagliara
+repo_url: https://github.com/gianlucapagliara/agentspype
+repo_name: gianlucapagliara/agentspype
+
+theme:
+  name: readthedocs
+  highlightjs: true
+  hljs_languages:
+    - python
+    - bash
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - codehilite:
+      guess_lang: false
+  - def_list
+  - attr_list
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quick Start: getting-started/quickstart.md
+  - User Guide:
+      - Agents: guide/agents.md
+      - State Machines: guide/state-machines.md
+      - Events: guide/events.md
+      - Agency: guide/agency.md
+      - Configuration & Definitions: guide/configuration.md
+      - Visualization: guide/visualization.md
+  - API Reference:
+      - Agent: api/agent.md
+      - Agency: api/agency.md
+      - State Machine: api/state-machine.md
+      - Listening: api/listening.md
+      - Publishing: api/publishing.md
+      - Configuration: api/configuration.md
+      - Visualization: api/visualization.md
+  - Development:
+      - Contributing: development/contributing.md
