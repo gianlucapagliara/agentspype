@@ -23,3 +23,15 @@ class RunnerConfig(BaseModel):
         default=None,
         description="Override for the auto-generated $INSTANCE_PREFIX.",
     )
+    clock_mode: str | None = Field(
+        default=None,
+        description=(
+            "Clock mode: 'realtime' or 'backtest'. "
+            "When set, the runner creates a clock and registers it in the runtime. "
+            "Requires chronopype to be installed (pip install agentspype[clock])."
+        ),
+    )
+    tick_size: float | None = Field(
+        default=None,
+        description="Clock tick size in seconds. Only used when clock_mode is set.",
+    )

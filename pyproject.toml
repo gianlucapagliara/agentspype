@@ -1,6 +1,6 @@
 [project]
 name = "agentspype"
-version = "0.3.1"
+version = "0.4.0"
 description = "A framework for building agents that interact with the world"
 authors = [{ name = "Gianluca Pagliara", email = "pagliara.gianluca@gmail.com" }]
 readme = "README.md"
@@ -14,6 +14,9 @@ dependencies = [
     "eventspype>=1.1.0,<2",
     "pyyaml>=6.0,<7",
 ]
+
+[project.optional-dependencies]
+clock = ["chronopype>=0.7.0,<1"]
 
 [project.scripts]
 agentspype = "agentspype.runner.cli:main"
