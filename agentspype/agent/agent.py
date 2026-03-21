@@ -112,7 +112,7 @@ class Agent:
         if value == self._parent_id:
             return
 
-        if value is not None:
+        if self._parent_id is not None:
             raise ValueError("Parent ID is already set")
 
         self._parent_id = value
