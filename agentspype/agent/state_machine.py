@@ -1,4 +1,3 @@
-import warnings
 import weakref
 from abc import abstractmethod
 from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
@@ -32,16 +31,27 @@ def _remap_transition_list(
 ) -> TransitionList:
     """Rebuild a TransitionList using fresh State copies.
 
-    For each transition, remap source/target through state_map and use
-    ``new_source._to_(new_target)`` so the transition is properly registered
-    on the new source state's internal transition list.
+    For each transition, remap source/target through state_map and create
+    a new ``Transition`` that preserves all metadata (``cond``, ``unless``,
+    ``validators``, ``before``, ``on``, ``after``) by copying the internal
+    ``_specs`` callback list.  The new transition is registered on the new
+    source state's internal transition list.
     """
     result = TransitionList()
     for t in tl.transitions:
         new_source = state_map.get(id(t.source), t.source)
         new_target = state_map.get(id(t.target), t.target)
-        # Use _to_ to properly register the transition on the source state
-        new_tl = new_source._to_(new_target, internal=t.internal)
+        # Create a bare Transition then copy user-specified callback specs
+        # (cond, unless, validators, before, on, after) from the original.
+        # Convention callbacks (on_stop, before_transition, etc.) are NOT
+        # copied — they will be added fresh by _setup() during class creation.
+        new_t = Transition(new_source, new_target, internal=t.internal)  # type: ignore[no-untyped-call]
+        for spec in t._specs.items:
+            if not spec.is_convention:
+                new_t._specs.items.append(spec)
+        new_tl = TransitionList([new_t])
+        # Register the transition on the source state
+        new_source.transitions.add_transitions(new_tl)
         result.add_transitions(new_tl)
     return result
 
@@ -67,22 +77,12 @@ def _clean_parent_mutations(
             try:
                 t.source.transitions.transitions.remove(t)
             except ValueError:
-                warnings.warn(
-                    f"Could not remove transition from parent state '{t.source.id}' — "
-                    "it may have been cleaned already.",
-                    RuntimeWarning,
-                    stacklevel=2,
-                )
+                pass  # Already cleaned by a prior subclass or metaclass processing
         if id(t.target) in state_map:
             try:
                 t.target.transitions.transitions.remove(t)
             except ValueError:
-                warnings.warn(
-                    f"Could not remove transition from parent state '{t.target.id}' — "
-                    "it may have been cleaned already.",
-                    RuntimeWarning,
-                    stacklevel=2,
-                )
+                pass  # Already cleaned by a prior subclass or metaclass processing
 
 
 class AgentStateMachineMeta(StateMachineMetaclass):
@@ -154,6 +154,50 @@ class AgentStateMachineMeta(StateMachineMetaclass):
                     _clean_parent_mutations(old_transitions, state_map)
 
     @staticmethod
+    def _remap_inherited_transitions(
+        state_map: dict[int, State],
+        bases: tuple[type, ...],
+        namespace: dict[str, Any],
+    ) -> None:
+        """Remap inherited transitions from parent classes using stored TransitionLists.
+
+        After ``StateMachineMetaclass.__new__`` processes a class, all ``TransitionList``
+        attributes are converted to bound methods, making them invisible to
+        ``isinstance(..., TransitionList)`` checks.  To work around this, each class
+        stores its original ``TransitionList`` objects in ``_transition_lists_``.
+
+        This method walks the MRO, retrieves those stored TransitionLists, remaps them
+        through ``state_map``, and either adds or **merges** them into the namespace.
+        Merging is critical: when a subclass redefines a transition event (e.g. ``stop``),
+        the parent's transitions for that event must be combined with the subclass's,
+        not silently dropped.
+        """
+        if not state_map:
+            return
+        seen: set[str] = set()
+        for base in bases:
+            parent_tls: dict[str, TransitionList] = getattr(
+                base, "_transition_lists_", {}
+            )
+            for attr_name, tl in parent_tls.items():
+                if attr_name in seen:
+                    continue
+                seen.add(attr_name)
+                needs_remap = any(
+                    id(t.source) in state_map or id(t.target) in state_map
+                    for t in tl.transitions
+                )
+                if needs_remap:
+                    remapped = _remap_transition_list(tl, state_map)
+                    existing = namespace.get(attr_name)
+                    if isinstance(existing, TransitionList):
+                        # Merge: combine subclass transitions with parent's
+                        # remapped transitions so both sets of paths are kept.
+                        namespace[attr_name] = existing | remapped
+                    else:
+                        namespace[attr_name] = remapped
+
+    @staticmethod
     def _ensure_default_transitions(namespace: dict[str, Any]) -> None:
         """Create default ``start`` and ``stop`` transitions if missing."""
         if "start" not in namespace:
@@ -174,7 +218,17 @@ class AgentStateMachineMeta(StateMachineMetaclass):
         state_map = mcs._clone_inherited_states(parent_states, namespace)
         mcs._ensure_default_states(parent_states, namespace)
         mcs._remap_namespace_transitions(state_map, namespace)
+        mcs._remap_inherited_transitions(state_map, bases, namespace)
         mcs._ensure_default_transitions(namespace)
+
+        # Snapshot TransitionLists before super().__new__() converts them to
+        # methods.  Subclasses use ``_transition_lists_`` to remap inherited
+        # transitions (see ``_remap_inherited_transitions``).
+        namespace["_transition_lists_"] = {
+            key: value
+            for key, value in namespace.items()
+            if isinstance(value, TransitionList)
+        }
 
         return super().__new__(mcs, name, bases, namespace)
 
