@@ -15,19 +15,45 @@ if TYPE_CHECKING:
 class StateMachineVisualization(BaseVisualization):
     """Visualization for agent state machines."""
 
+    # Default edge style map for common transitions
+    DEFAULT_EDGE_STYLE_MAP: dict[str, dict[str, str]] = {
+        "start": {"color": "green", "style": "dashed"},
+        "stop": {"color": "red", "style": "dashed"},
+    }
+
     def create_visualization(  # noqa: C901
         self,
         target: Any,
         graph: pydot.Dot | None = None,
         current_state: State | None = None,
+        edge_style_map: dict[str, dict[str, str]] | None = None,
         **kwargs: Any,
     ) -> pydot.Dot:
-        """Create a visualization of the state machine."""
+        """Create a visualization of the state machine.
+
+        Args:
+            target: The state machine instance to visualize.
+            graph: An existing graph to add to, or None to create a new one.
+            current_state: The current state to highlight, or None.
+            edge_style_map: A mapping of transition event names to style attributes.
+                Each value is a dict with optional keys: "color", "style", "penwidth".
+                Default map styles "start" as green/dashed and "stop" as red/dashed.
+                Pass a custom dict to override or extend the defaults.
+            **kwargs: Additional arguments.
+
+        Returns:
+            pydot.Dot: The generated state machine diagram.
+        """
         # Type check the target
         state_machine = target
 
         # Get the state machine class for visualization
         state_machine_class = state_machine.__class__
+
+        # Merge default edge styles with user-provided ones
+        effective_edge_styles = dict(self.DEFAULT_EDGE_STYLE_MAP)
+        if edge_style_map is not None:
+            effective_edge_styles.update(edge_style_map)
 
         # Use statemachine's built-in diagram generation
         diagram_generator = DotGraphMachine(state_machine_class)  # type: ignore[no-untyped-call]
@@ -83,19 +109,21 @@ class StateMachineVisualization(BaseVisualization):
             # Get edge label
             edge_label = edge.get_label().strip('"')
 
-            # Color edges based on their type
-            if edge_label == "start":
-                edge.set_color("darkgreen")
-                edge.set_style("dashed")
-            elif edge_label == "stop":
-                edge.set_color("darkred")
-                edge.set_style("dashed")
+            # Check if we have a custom style for this edge label
+            if edge_label in effective_edge_styles:
+                style_attrs = effective_edge_styles[edge_label]
+                if "color" in style_attrs:
+                    edge.set_color(style_attrs["color"])
+                if "style" in style_attrs:
+                    edge.set_style(style_attrs["style"])
+                if "penwidth" in style_attrs:
+                    edge.obj_dict["attributes"]["penwidth"] = style_attrs["penwidth"]
             elif edge_label == "":
                 # Empty transition
                 edge.set_style("dotted")
                 edge.set_color("gray")
             elif edge_label in getattr(state_machine_class, "_events", {}):
-                # This is a registered event
+                # This is a registered event with no custom style
                 edge.set_color("darkblue")
                 edge.set_style("bold")
 

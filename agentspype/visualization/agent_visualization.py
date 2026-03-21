@@ -29,10 +29,26 @@ class AgentVisualization(BaseVisualization):
         include_state_machine: bool = True,
         include_publishing: bool = True,
         include_listening: bool = True,
+        include_components: bool = True,
         show_current_state: bool = True,
         **kwargs: Any,
     ) -> pydot.Dot:
-        """Create a comprehensive visualization of the agent."""
+        """Create a comprehensive visualization of the agent.
+
+        Args:
+            target: The agent instance to visualize.
+            graph: An existing graph to add to, or None to create a new one.
+            include_state_machine: Whether to include state machine visualization.
+            include_publishing: Whether to include publishing visualization.
+            include_listening: Whether to include listening visualization.
+            include_components: Whether to include agent sub-components.
+            show_current_state: Whether to highlight the current state.
+            **kwargs: Additional arguments passed to sub-visualizers
+                (e.g. edge_style_map for state machine).
+
+        Returns:
+            pydot.Dot: The generated agent diagram.
+        """
         # Type check the target
         agent = target
 
@@ -111,7 +127,46 @@ class AgentVisualization(BaseVisualization):
             )
             graph.add_edge(listen_edge)
 
+        # Add component visualization if requested
+        if include_components:
+            self._add_components(agent, graph)
+
         return graph
+
+    def _add_components(self, agent: Any, graph: pydot.Dot) -> None:
+        """Discover and add agent sub-components to the graph.
+
+        Components are discovered via the agent's ``get_components()`` method.
+        Each component should have a ``name`` attribute (or a class ``__name__``).
+        """
+        components = agent.get_components() if hasattr(agent, "get_components") else []
+
+        for idx, component in enumerate(components):
+            # Determine component label
+            if hasattr(component, "name"):
+                comp_label = component.name
+            else:
+                comp_label = component.__class__.__name__
+
+            # Use index + label as node id to avoid collisions
+            comp_node_id = f"comp_{idx}_{comp_label}"
+
+            comp_node = self.create_node(
+                node_id=comp_node_id,
+                label=comp_label,
+                fillcolor="lightyellow",
+                color="darkorange",
+            )
+            graph.add_node(comp_node)
+
+            comp_edge = self.create_edge(
+                source=agent.__class__.__name__,
+                target=comp_node_id,
+                label="component",
+                style="solid",
+                color="darkorange",
+            )
+            graph.add_edge(comp_edge)
 
     def _merge_graph(self, target_graph: pydot.Dot, source_graph: pydot.Dot) -> None:
         """Merge nodes and edges from source graph into target graph."""

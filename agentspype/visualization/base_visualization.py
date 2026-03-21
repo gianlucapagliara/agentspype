@@ -39,7 +39,19 @@ class BaseVisualization(ABC):
         fillcolor: str = "white",
         color: str = "black",
     ) -> pydot.Node:
-        """Create a styled node for the graph."""
+        """Create a styled node for the graph.
+
+        Args:
+            node_id: Unique identifier for the node within the graph.
+            label: Display text shown inside the node.
+            shape: Graphviz node shape (e.g. ``"rectangle"``, ``"ellipse"``).
+            style: Comma-separated Graphviz style attributes
+                (e.g. ``"rounded, filled"``).
+            fillcolor: Background fill colour of the node.
+            color: Border colour of the node.
+            final: If ``True``, the node is drawn with a double border
+                (``peripheries=2``) to indicate a terminal/final element.
+        """
         node = pydot.Node(
             node_id,
             label=label,

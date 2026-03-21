@@ -117,6 +117,23 @@ class Agent:
 
         self._parent_id = value
 
+    # === Components ===
+
+    def get_components(self) -> list[Any]:
+        """Return a list of sub-components for this agent.
+
+        Override this method in subclasses to expose domain-specific components
+        (e.g. OrderComponent, TransferComponent) that will appear in the
+        agent's visualization diagram.
+
+        Each component should ideally have a ``name`` attribute; otherwise its
+        class name will be used as the label.
+
+        Returns:
+            list[Any]: A list of component objects. Empty by default.
+        """
+        return []
+
     # === Visualization Methods ===
 
     def _get_visualizer(self) -> "AgentVisualization":
@@ -139,7 +156,9 @@ class Agent:
         include_state_machine: bool = True,
         include_publishing: bool = True,
         include_listening: bool = True,
+        include_components: bool = True,
         show_current_state: bool = True,
+        edge_style_map: dict[str, dict[str, str]] | None = None,
         **kwargs: Any,
     ) -> "pydot.Dot":
         """Create a comprehensive visualization of the agent.
@@ -151,7 +170,11 @@ class Agent:
             include_state_machine: Whether to include state machine visualization
             include_publishing: Whether to include publishing visualization
             include_listening: Whether to include listening visualization
+            include_components: Whether to include agent sub-components
             show_current_state: Whether to highlight the current state
+            edge_style_map: Custom edge styling for state machine transitions.
+                Maps transition event names to style dicts with keys like
+                "color", "style", "penwidth".
             **kwargs: Additional arguments passed to visualization components
 
         Returns:
@@ -166,7 +189,9 @@ class Agent:
             include_state_machine=include_state_machine,
             include_publishing=include_publishing,
             include_listening=include_listening,
+            include_components=include_components,
             show_current_state=show_current_state,
+            edge_style_map=edge_style_map,
             **kwargs,
         )
 

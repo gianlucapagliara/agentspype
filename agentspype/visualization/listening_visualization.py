@@ -11,25 +11,28 @@ if TYPE_CHECKING:
 
 
 class ListeningVisualization(BaseVisualization):
-    """Visualization for agent event listening."""
+    """Visualization for agent event listening.
+
+    Publisher deduplication
+    ----------------------
+    When multiple event subscriptions reference the same publisher class, a
+    single publisher node is created in the graph (keyed by the class name).
+    However, each subscription still produces its own edge from that publisher
+    node to the corresponding callback (or event-tag) node.  This keeps the
+    diagram compact while faithfully showing every subscription relationship.
+    """
 
     def create_visualization(
         self, target: Any, graph: pydot.Dot | None = None, **kwargs: Any
     ) -> pydot.Dot:
         """Create a visualization of the listening system."""
-        # Get the listening class
-        if isinstance(target, type):
-            listening_class = target
-        else:
-            listening_class = type(target)
+        listening_class = target if isinstance(target, type) else type(target)
 
-        # Get event definitions - use hasattr to check method exists
         if hasattr(listening_class, "get_event_definitions"):
             event_definitions = listening_class.get_event_definitions()
         else:
             event_definitions = {}
 
-        # Create or use existing graph
         if graph is None:
             graph = self.create_graph(f"{listening_class.__name__} Listening")
 
@@ -43,117 +46,144 @@ class ListeningVisualization(BaseVisualization):
         )
         graph.add_node(listener_node)
 
-        # Process event definitions
         if not event_definitions:
-            # No events to listen to
-            no_events_node = self.create_node(
-                node_id="no_subscriptions",
-                label="No Subscriptions",
-                fillcolor="lightgray",
-                color="gray",
-                style="rounded, filled, dotted",
-            )
-            graph.add_node(no_events_node)
+            self._add_empty_placeholder(graph, listening_class.__name__)
+        else:
+            self._add_subscriptions(graph, listening_class.__name__, event_definitions)
 
-            # Add edge showing no subscriptions
-            no_events_edge = self.create_edge(
-                source=listening_class.__name__,
+        return graph
+
+    def _add_empty_placeholder(self, graph: pydot.Dot, listener_name: str) -> None:
+        """Add a 'No Subscriptions' placeholder node."""
+        no_events_node = self.create_node(
+            node_id="no_subscriptions",
+            label="No Subscriptions",
+            fillcolor="lightgray",
+            color="gray",
+            style="rounded, filled, dotted",
+        )
+        graph.add_node(no_events_node)
+        graph.add_edge(
+            self.create_edge(
+                source=listener_name,
                 target="no_subscriptions",
                 label="listens to",
                 style="dotted",
                 color="gray",
             )
-            graph.add_edge(no_events_edge)
-        else:
-            # Process each event subscription
-            for subscription_name, subscription_details in event_definitions.items():
-                # Create callback node
-                callback_node = self.create_node(
+        )
+
+    def _add_subscriptions(
+        self,
+        graph: pydot.Dot,
+        listener_name: str,
+        event_definitions: dict[str, Any],
+    ) -> None:
+        """Add subscription nodes and edges for each event definition."""
+        seen_publishers: set[str] = set()
+
+        for subscription_name, details in event_definitions.items():
+            # Callback node + edge from listener
+            graph.add_node(
+                self.create_node(
                     node_id=subscription_name,
                     label=subscription_name,
                     fillcolor="lightgreen",
                     color="darkgreen",
                 )
-                graph.add_node(callback_node)
-
-                # Create edge from listener to callback
-                listen_edge = self.create_edge(
-                    source=listening_class.__name__,
+            )
+            graph.add_edge(
+                self.create_edge(
+                    source=listener_name,
                     target=subscription_name,
                     label="calls",
                     style="solid",
                     color="darkblue",
                 )
-                graph.add_edge(listen_edge)
+            )
 
-                # Get subscription information
-                event_tag = (
-                    subscription_details.get("event_tag")
-                    if isinstance(subscription_details, dict)
-                    else None
+            event_tag = details.get("event_tag") if isinstance(details, dict) else None
+            publisher_class = (
+                details.get("publisher_class") if isinstance(details, dict) else None
+            )
+
+            tag_node_id = self._add_event_tag(graph, event_tag, subscription_name)
+            self._add_publisher(
+                graph,
+                publisher_class,
+                seen_publishers,
+                tag_node_id or subscription_name,
+            )
+
+    def _add_event_tag(
+        self,
+        graph: pydot.Dot,
+        event_tag: Any,
+        subscription_name: str,
+    ) -> str | None:
+        """Add an event-tag node if available. Returns the tag node ID or None."""
+        if not event_tag:
+            return None
+
+        tag_str = (
+            str(event_tag.value) if hasattr(event_tag, "value") else str(event_tag)
+        )
+        tag_node_id = f"tag_{tag_str}"
+
+        graph.add_node(
+            self.create_node(
+                node_id=tag_node_id,
+                label=tag_str,
+                fillcolor="lightyellow",
+                color="orange",
+            )
+        )
+        graph.add_edge(
+            self.create_edge(
+                source=tag_node_id,
+                target=subscription_name,
+                label="triggers",
+                style="dashed",
+                color="orange",
+            )
+        )
+        return tag_node_id
+
+    def _add_publisher(
+        self,
+        graph: pydot.Dot,
+        publisher_class: Any,
+        seen_publishers: set[str],
+        target_node_id: str,
+    ) -> None:
+        """Add a publisher node (deduplicated) and edge to the target."""
+        if not publisher_class:
+            return
+
+        publisher_name = (
+            publisher_class.__name__
+            if hasattr(publisher_class, "__name__")
+            else str(publisher_class)
+        )
+        publisher_node_id = f"pub_{publisher_name}"
+
+        if publisher_name not in seen_publishers:
+            seen_publishers.add(publisher_name)
+            graph.add_node(
+                self.create_node(
+                    node_id=publisher_node_id,
+                    label=publisher_name,
+                    fillcolor="lightcyan",
+                    color="darkgreen",
                 )
-                publisher_class = (
-                    subscription_details.get("publisher_class")
-                    if isinstance(subscription_details, dict)
-                    else None
-                )
+            )
 
-                # Create event tag node if available
-                if event_tag:
-                    tag_str = str(event_tag)
-                    if hasattr(event_tag, "value"):
-                        tag_str = str(event_tag.value)
-
-                    tag_node = self.create_node(
-                        node_id=f"tag_{tag_str}",
-                        label=tag_str,
-                        fillcolor="lightyellow",
-                        color="orange",
-                    )
-                    graph.add_node(tag_node)
-
-                    # Create edge from tag to callback
-                    tag_edge = self.create_edge(
-                        source=f"tag_{tag_str}",
-                        target=subscription_name,
-                        label="triggers",
-                        style="dashed",
-                        color="orange",
-                    )
-                    graph.add_edge(tag_edge)
-
-                # Create publisher node if available
-                if publisher_class:
-                    publisher_name = (
-                        publisher_class.__name__
-                        if hasattr(publisher_class, "__name__")
-                        else str(publisher_class)
-                    )
-                    publisher_node = self.create_node(
-                        node_id=f"pub_{publisher_name}",
-                        label=publisher_name,
-                        fillcolor="lightcyan",
-                        color="darkgreen",
-                    )
-                    graph.add_node(publisher_node)
-
-                    # Create edge from publisher to tag (if tag exists) or callback
-                    if event_tag:
-                        pub_edge = self.create_edge(
-                            source=f"pub_{publisher_name}",
-                            target=f"tag_{tag_str}",
-                            label="publishes",
-                            style="solid",
-                            color="darkgreen",
-                        )
-                    else:
-                        pub_edge = self.create_edge(
-                            source=f"pub_{publisher_name}",
-                            target=subscription_name,
-                            label="publishes to",
-                            style="solid",
-                            color="darkgreen",
-                        )
-                    graph.add_edge(pub_edge)
-
-        return graph
+        graph.add_edge(
+            self.create_edge(
+                source=publisher_node_id,
+                target=target_node_id,
+                label="publishes",
+                style="solid",
+                color="darkgreen",
+            )
+        )
