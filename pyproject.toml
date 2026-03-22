@@ -8,7 +8,7 @@ license = { text = "MIT" }
 requires-python = ">=3.13"
 dependencies = [
     "pydantic>=2.10.4,<3",
-    "python-statemachine<2.4.0",
+    "python-statemachine>=2.4.0,<3",
     "pydot>=3.0.3,<4",
     "bidict>=0.23.1,<1",
     "eventspype>=1.2.0,<2",
@@ -18,7 +18,7 @@ dependencies = [
 [project.optional-dependencies]
 clock = ["chronopype>=0.7.0,<1"]
 wizard = ["pydantic-wizard>=0.1.0,<1"]
-service = ["processpype>=1.3.0,<2"]
+service = ["processpype>=2.0.0"]
 
 [project.scripts]
 agentspype = "agentspype.runner.cli:main"
