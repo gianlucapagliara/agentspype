@@ -6,7 +6,7 @@ processpype ``ServiceManager`` contract without adding extra logic.
 
 from __future__ import annotations
 
-from processpype.core.service.manager import ServiceManager
+from processpype.service.manager import ServiceManager
 
 
 class AgentRunnerManager(ServiceManager):

@@ -10,8 +10,8 @@ from typing import Any
 
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
-from processpype.core.models import ServiceStatus
-from processpype.core.service.router import ServiceRouter
+from processpype.server.service_router import ServiceRouter
+from processpype.service.models import ServiceStatus
 
 from .events import QueueEventSubscriber
 from .models import (

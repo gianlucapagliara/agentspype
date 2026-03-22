@@ -114,7 +114,7 @@ class BasicClockStateMachine(ClockStateMachine, BasicAgentStateMachine):
     # === Transitions ===
     activate: ClassVar[TransitionList] = ClockStateMachine.idle.to(running)
     deactivate: ClassVar[TransitionList] = running.to(ClockStateMachine.idle)
-    tick: ClassVar[TransitionList] = running.to.itself()
+    tick: ClassVar[TransitionList] = running.to.itself()  # type: ignore[no-untyped-call]
     stop: ClassVar[TransitionList] = running.to(ClockStateMachine.end)
 
     # === State action stubs ===

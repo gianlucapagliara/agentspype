@@ -45,7 +45,7 @@ def _remap_transition_list(
         # (cond, unless, validators, before, on, after) from the original.
         # Convention callbacks (on_stop, before_transition, etc.) are NOT
         # copied — they will be added fresh by _setup() during class creation.
-        new_t = Transition(new_source, new_target, internal=t.internal)  # type: ignore[no-untyped-call]
+        new_t = Transition(new_source, new_target, internal=t.internal)
         for spec in t._specs.items:
             if not spec.is_convention:
                 new_t._specs.items.append(spec)

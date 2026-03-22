@@ -9,7 +9,7 @@ import signal
 import time
 from typing import TYPE_CHECKING, Any
 
-from processpype.core.service import Service
+from processpype.service.base import Service
 
 from agentspype.runner.runner import AgentRunner
 
@@ -25,7 +25,7 @@ from .models import (
 from .router import AgentRunnerRouter
 
 if TYPE_CHECKING:
-    from processpype.core.service.manager import ServiceManager
+    from processpype.service.manager import ServiceManager
 
 __all__ = ["AgentRunnerService"]
 

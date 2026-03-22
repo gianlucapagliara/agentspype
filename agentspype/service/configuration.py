@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from processpype.core.configuration.models import ServiceConfiguration
+from processpype.config.models import ServiceConfiguration
 from pydantic import Field
 
 

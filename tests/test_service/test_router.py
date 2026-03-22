@@ -12,7 +12,7 @@ httpx = pytest.importorskip("httpx")
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from processpype.core.models import ServiceState, ServiceStatus
+from processpype.service.models import ServiceState, ServiceStatus
 
 from agentspype.service.events import QueueEventSubscriber
 from agentspype.service.models import (

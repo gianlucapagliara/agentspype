@@ -56,7 +56,7 @@ class StateMachineVisualization(BaseVisualization):
             effective_edge_styles.update(edge_style_map)
 
         # Use statemachine's built-in diagram generation
-        diagram_generator = DotGraphMachine(state_machine_class)  # type: ignore[no-untyped-call]
+        diagram_generator = DotGraphMachine(state_machine_class)
         dot_graph = diagram_generator()
 
         # Apply our custom styling
