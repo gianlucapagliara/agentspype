@@ -108,6 +108,76 @@ def build_parser() -> argparse.ArgumentParser:
         help="Directory to save diagrams (default: .diagrams).",
     )
 
+    # -- config -------------------------------------------------------------
+    config_parser = subparsers.add_parser(
+        "config",
+        help="Agent configuration management (requires wizard extra).",
+    )
+    config_sub = config_parser.add_subparsers(dest="config_command")
+
+    # config new
+    config_new = config_sub.add_parser(
+        "new", help="Interactively create a new agent configuration."
+    )
+    config_new.add_argument(
+        "agent_fqn",
+        type=str,
+        help="Fully qualified agent class (e.g. mypackage.agents.my_agent.MyAgent).",
+    )
+    config_new.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        default=Path("config.yaml"),
+        help="Output YAML file (default: config.yaml).",
+    )
+    config_new.add_argument(
+        "--append",
+        action="store_true",
+        default=False,
+        help="Append to an existing config file instead of overwriting.",
+    )
+
+    # config edit
+    config_edit = config_sub.add_parser(
+        "edit", help="Interactively edit an existing agent configuration."
+    )
+    config_edit.add_argument(
+        "config_file", type=Path, help="Path to the YAML config file."
+    )
+    config_edit.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        default=None,
+        help="Save to a different file instead of overwriting.",
+    )
+
+    # config validate
+    config_validate = config_sub.add_parser(
+        "validate", help="Validate an agent configuration file."
+    )
+    config_validate.add_argument(
+        "config_file", type=Path, help="Path to the YAML config file."
+    )
+    config_validate.add_argument(
+        "-i",
+        "--interactive",
+        action="store_true",
+        default=False,
+        help="Offer to interactively fix invalid entries.",
+    )
+
+    # config show
+    config_show = config_sub.add_parser(
+        "show", help="Display the configuration schema for an agent."
+    )
+    config_show.add_argument(
+        "agent_fqn",
+        type=str,
+        help="Fully qualified agent class (e.g. mypackage.agents.my_agent.MyAgent).",
+    )
+
     return parser
 
 
@@ -166,6 +236,42 @@ def _plot_command(args: argparse.Namespace) -> None:
         raise SystemExit(1) from exc
 
 
+def _config_command(args: argparse.Namespace) -> None:
+    try:
+        from agentspype.runner.config.wizard import (
+            wizard_edit,
+            wizard_new,
+            wizard_show,
+            wizard_validate,
+        )
+    except ImportError:
+        logging.getLogger(__name__).error(
+            "pydantic-wizard is required for config commands. "
+            "Install with: pip install agentspype[wizard]"
+        )
+        raise SystemExit(1) from None
+
+    if args.config_command is None:
+        # No subcommand given — print help for the config group.
+        build_parser().parse_args(["config", "--help"])
+        return
+
+    try:
+        if args.config_command == "new":
+            wizard_new(args.agent_fqn, args.output, append=args.append)
+        elif args.config_command == "edit":
+            wizard_edit(args.config_file, args.output)
+        elif args.config_command == "validate":
+            ok = wizard_validate(args.config_file, interactive=args.interactive)
+            if not ok:
+                raise SystemExit(1)
+        elif args.config_command == "show":
+            wizard_show(args.agent_fqn)
+    except Exception as exc:
+        logging.getLogger(__name__).error("Config command failed: %s", exc)
+        raise SystemExit(1) from exc
+
+
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
@@ -191,6 +297,8 @@ def main() -> None:
         _create_command(args)
     elif args.command == "plot":
         _plot_command(args)
+    elif args.command == "config":
+        _config_command(args)
 
 
 if __name__ == "__main__":

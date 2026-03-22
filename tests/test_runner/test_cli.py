@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from agentspype.runner.cli import build_parser
 
 
@@ -65,6 +67,50 @@ class TestBuildParser:
         parser = build_parser()
         args = parser.parse_args([])
         assert args.command is None
+
+    def test_parser_has_config_subcommand(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(["config", "new", "agent.FQN"])
+        assert args.command == "config"
+        assert args.config_command == "new"
+        assert args.agent_fqn == "agent.FQN"
+
+    def test_config_new_defaults(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(["config", "new", "pkg.mod.Agent"])
+        assert args.output == Path("config.yaml")
+        assert args.append is False
+
+    def test_config_new_custom_options(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(
+            ["config", "new", "pkg.mod.Agent", "-o", "custom.yaml", "--append"]
+        )
+        assert args.output == Path("custom.yaml")
+        assert args.append is True
+
+    def test_config_edit_defaults(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(["config", "edit", "existing.yaml"])
+        assert args.config_command == "edit"
+        assert args.output is None
+
+    def test_config_validate_defaults(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(["config", "validate", "config.yaml"])
+        assert args.config_command == "validate"
+        assert args.interactive is False
+
+    def test_config_validate_interactive(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(["config", "validate", "config.yaml", "-i"])
+        assert args.interactive is True
+
+    def test_config_show_parses(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(["config", "show", "pkg.mod.Agent"])
+        assert args.config_command == "show"
+        assert args.agent_fqn == "pkg.mod.Agent"
 
     def test_parser_is_extensible(self) -> None:
         """Users should be able to add subcommands via build_parser()."""

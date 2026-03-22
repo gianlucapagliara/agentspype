@@ -17,6 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 clock = ["chronopype>=0.7.0,<1"]
+wizard = ["pydantic-wizard>=0.1.0,<1"]
 
 [project.scripts]
 agentspype = "agentspype.runner.cli:main"
@@ -69,7 +70,6 @@ select = [
     "UP",  # pyupgrade
 ]
 ignore = [
-    "E203",  # See https://github.com/psf/black/issues/315
     "E501",  # Line too long (handled by formatter)
 ]
 
