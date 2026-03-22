@@ -1,6 +1,6 @@
 [project]
 name = "agentspype"
-version = "0.5.0"
+version = "0.6.0"
 description = "A framework for building agents that interact with the world"
 authors = [{ name = "Gianluca Pagliara", email = "pagliara.gianluca@gmail.com" }]
 readme = "README.md"
