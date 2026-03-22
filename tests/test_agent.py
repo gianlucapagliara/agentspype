@@ -348,6 +348,27 @@ def test_state_machine_should_stop(test_agent: MockAgent) -> None:
     assert test_agent.machine.should_stop()
 
 
+def test_is_initial_property(test_agent: MockAgent) -> None:
+    """Test that is_initial reflects the state machine's initial state."""
+    assert test_agent.is_initial is True
+    assert test_agent.is_final is False
+
+    # Transition away from initial
+    test_agent.machine.start_to_idle()
+    assert test_agent.is_initial is False
+    assert test_agent.is_final is False
+
+
+def test_is_final_property(test_agent: MockAgent) -> None:
+    """Test that is_final reflects the state machine's final state."""
+    assert test_agent.is_final is False
+
+    # Transition to final
+    test_agent.machine.safe_stop()
+    assert test_agent.is_final is True
+    assert test_agent.is_initial is False
+
+
 def test_state_machine_before_transition(test_agent: MockAgent) -> None:
     """Test state machine before_transition hook."""
     # Same state transition should not trigger debug log

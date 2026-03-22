@@ -117,6 +117,16 @@ class Agent:
 
         self._parent_id = value
 
+    @property
+    def is_initial(self) -> bool:
+        """Whether the agent's state machine is in its initial state."""
+        return bool(self._state_machine.current_state.initial)
+
+    @property
+    def is_final(self) -> bool:
+        """Whether the agent's state machine is in its final state."""
+        return bool(self._state_machine.current_state.final)
+
     # === Components ===
 
     def get_components(self) -> list[Any]:

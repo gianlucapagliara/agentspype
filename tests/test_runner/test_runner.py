@@ -214,6 +214,31 @@ async def test_run_exits_when_all_agents_final() -> None:
 
 
 @pytest.mark.asyncio
+async def test_start_time_property() -> None:
+    """start_time is 0.0 before setup, positive after setup (when history is enabled)."""
+    runner = _ConcreteRunner([_RunnerTestConfig()])
+    assert runner.start_time == 0.0
+
+    await runner.setup()
+    # start_time is set only when history_service.enabled is True.
+    # The default LogHistoryService has enabled=False, so it stays 0.
+    # We just verify the property is accessible and returns a float.
+    assert isinstance(runner.start_time, float)
+
+    await runner.teardown()
+
+
+@pytest.mark.asyncio
+async def test_keep_running_property() -> None:
+    """keep_running reflects the constructor argument."""
+    runner_default = _ConcreteRunner([_RunnerTestConfig()])
+    assert runner_default.keep_running is False
+
+    runner_keep = _ConcreteRunner([_RunnerTestConfig()], keep_running=True)
+    assert runner_keep.keep_running is True
+
+
+@pytest.mark.asyncio
 async def test_multiple_agents() -> None:
     configs = [_RunnerTestConfig(label="a"), _RunnerTestConfig(label="b")]
     runner = _ConcreteRunner(configs)

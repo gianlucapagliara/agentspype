@@ -112,6 +112,16 @@ class AgentRunner:
         """The notification service used by this runner."""
         return self._notification_service
 
+    @property
+    def start_time(self) -> float:
+        """Epoch timestamp when setup() completed (0.0 if not started)."""
+        return self._start_time
+
+    @property
+    def keep_running(self) -> bool:
+        """Whether runner stays alive after all agents reach final state."""
+        return self._keep_running
+
     # ------------------------------------------------------------------
     # Hooks for subclasses
     # ------------------------------------------------------------------
