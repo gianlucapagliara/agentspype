@@ -159,7 +159,7 @@ def on_job_available(self, event_data):
 
 ### Discovering Subscriptions
 
-`AgentListening.get_event_definitions()` returns a dict of public, non-dunder, non-abstract callable methods. This is used by the visualization system to enumerate callbacks. The returned dict includes `event_tag` and `publisher_class` attributes if the methods carry them (set by the eventspype subscription decorators).
+`get_event_definitions()` is an optional classmethod that subclasses can implement to support the visualization system. It should return a dict of subscription metadata. The visualization code checks for its presence with `hasattr()`, so it is not required on the base class. If implemented, the returned dict values should include `event_tag` and `publisher_class` attributes to describe what events the listener subscribes to.
 
 ## Lifecycle Integration
 

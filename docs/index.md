@@ -20,6 +20,10 @@ The combination makes it easy to build systems where agents respond to external 
 - **Pydantic configuration and status** — `AgentConfiguration` and `AgentStatus` are Pydantic `BaseModel` subclasses. Agents can be initialized from plain dicts as well as model instances.
 - **Immutable definitions** — `AgentDefinition` is a frozen Pydantic model that binds together the state machine class, listening class, publishing class, configuration class, and status class for a given agent type.
 - **Visualization** — Built-in pydot-based visualization for state machines, event publishing, event listening, and combined agent diagrams. Diagrams are saved as PNG files.
+- **Agent Runner & CLI** — Orchestrate multi-agent setups from YAML configuration with the `agentspype` CLI (`run`, `create`, `plot` commands) or programmatically via `AgentRunner`.
+- **Configuration management** — YAML-based configuration loading with Pydantic validation and an optional interactive wizard (`pydantic-wizard`).
+- **Clock support** — Optional time management via [chronopype](https://github.com/gianlucapagliara/chronopype) for real-time and backtesting scenarios (`pip install agentspype[clock]`).
+- **Service mode** — Run agents as background services with REST API integration via [processpype](https://github.com/gianlucapagliara/processpype) (`pip install agentspype[service]`).
 
 ## Quick Install
 

@@ -105,6 +105,14 @@ The agent's runtime status instance.
 
 The Python `id()` of the parent agent, or `None`. Can be set once to a non-`None` value; attempting to change it to another non-`None` value raises `ValueError`.
 
+#### `is_initial -> bool`
+
+Whether the agent's state machine is in its initial state.
+
+#### `is_final -> bool`
+
+Whether the agent's state machine is in a final state.
+
 ### Visualization Methods
 
 All visualization methods are lazy: the `AgentVisualization` class is imported only when first called. If `pydot` is not installed, an `ImportError` is raised.
@@ -119,12 +127,14 @@ agent.visualize(
     include_state_machine: bool = True,
     include_publishing: bool = True,
     include_listening: bool = True,
+    include_components: bool = True,
     show_current_state: bool = True,
+    edge_style_map: dict[str, dict[str, str]] | None = None,
     **kwargs,
 ) -> pydot.Dot
 ```
 
-Creates a comprehensive diagram with the agent node at center, optionally including state machine, publishing, and listening subgraphs.
+Creates a comprehensive diagram with the agent node at center, optionally including state machine, publishing, listening, and component subgraphs. The `edge_style_map` parameter allows custom styling for state machine transition edges (maps transition event names to dicts with keys like `"color"`, `"style"`, `"penwidth"`).
 
 #### `visualize_state_machine(...) -> pydot.Dot`
 

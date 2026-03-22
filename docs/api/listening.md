@@ -26,17 +26,11 @@ Resolves the weakref to the owning agent. Raises `RuntimeError("Agent has been d
 
 Returns `self.agent.logger()` — the class-level logger of the owning agent.
 
-#### `get_event_definitions() -> dict[str, Any]` *(classmethod)*
+#### `get_event_definitions() -> dict[str, Any]` *(optional classmethod)*
 
-Returns a dict mapping method names to subscription metadata for all public, non-dunder, non-reserved callable methods on the class. Used by `ListeningVisualization` to enumerate callback methods.
+Not defined on the base class. Subclasses can implement this to support the visualization system. The `ListeningVisualization` checks for its presence with `hasattr()` and, if found, calls it to enumerate callback methods.
 
-The dict values are dicts with keys:
-- `"callback"` — the method object
-- `"callback_name"` — the method name
-- `"event_tag"` — value of `getattr(method, "event_tag", None)` (set by eventspype decorators)
-- `"publisher_class"` — value of `getattr(method, "publisher_class", None)` (set by eventspype decorators)
-
-Reserved names excluded from the result: `subscribe`, `unsubscribe`, `logger`.
+A typical implementation returns a dict mapping method names to subscription metadata with keys like `"event_tag"` and `"publisher_class"`.
 
 #### `subscribe() -> None` *(abstract)*
 

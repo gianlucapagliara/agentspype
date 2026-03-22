@@ -59,6 +59,38 @@ Agency.deregister_agent_class(agent_class: type[Agent]) -> None
 
 Removes the mapping for `agent_class`. Idempotent.
 
+#### `resolve_by_name(class_name)` *(classmethod)*
+
+```python
+Agency.resolve_by_name(class_name: str) -> type[Agent]
+```
+
+Resolves a registered agent class by its `__name__`.
+
+**Raises:**
+- `KeyError` — if no registered agent class matches `class_name`.
+- `ValueError` — if multiple registered agent classes share the same `class_name`.
+
+```python
+Agency.register_agent_class(WorkerAgent)
+agent_cls = Agency.resolve_by_name("WorkerAgent")
+# agent_cls is WorkerAgent
+```
+
+#### `get_registered_agent_classes()` *(classmethod)*
+
+```python
+Agency.get_registered_agent_classes() -> dict[str, type[Agent]]
+```
+
+Returns all registered agent classes keyed by `__name__`.
+
+```python
+Agency.register_agent_class(WorkerAgent)
+classes = Agency.get_registered_agent_classes()
+# {"WorkerAgent": WorkerAgent}
+```
+
 #### `get_agent_from_configuration(configuration)` *(classmethod)*
 
 ```python

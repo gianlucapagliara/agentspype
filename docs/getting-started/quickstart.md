@@ -224,10 +224,34 @@ class WorkerListening(AgentListening):
         pass
 
 
+class WorkerPublishing(StateAgentPublishing):
+    class Events(Enum):
+        StateMachineTransition = "sm_transition_event"
+        JobCompleted = "job_completed"
+
+    @dataclass
+    class JobCompletedEvent:
+        job_id: str
+        result: str
+
+    sm_transition_event = StateAgentPublishing.sm_transition_event
+
+    job_completed = EventPublication(
+        event_tag=Events.JobCompleted,
+        event_class=JobCompletedEvent,
+    )
+
+    def publish_job_completed(self, job_id: str, result: str) -> None:
+        self.publish(
+            self.job_completed,
+            self.JobCompletedEvent(job_id=job_id, result=result),
+        )
+
+
 class WorkerAgent(Agent):
     definition = AgentDefinition(
         configuration_class=WorkerConfiguration,
-        events_publishing_class=StateAgentPublishing,
+        events_publishing_class=WorkerPublishing,
         events_listening_class=WorkerListening,
         state_machine_class=WorkerStateMachine,
         status_class=WorkerStatus,

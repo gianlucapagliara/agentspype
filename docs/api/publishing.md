@@ -22,9 +22,11 @@ Resolves the weakref to the owning agent. Raises `RuntimeError("Agent has been d
 
 ### Methods
 
-#### `get_event_definitions() -> dict[str, EventPublication]` *(classmethod)*
+#### `get_event_definitions() -> dict[str, EventPublication]` *(optional classmethod)*
 
-Returns a dict mapping attribute names to `EventPublication` instances for all `EventPublication` attributes declared on the class. Used by `PublishingVisualization` to enumerate published events.
+Not defined on the base class. Subclasses can implement this to support the visualization system. The `PublishingVisualization` checks for its presence with `hasattr()` and, if found, calls it to enumerate `EventPublication` attributes.
+
+A typical implementation scans class attributes and returns those that are `EventPublication` instances:
 
 ```python
 WorkerPublishing.get_event_definitions()
