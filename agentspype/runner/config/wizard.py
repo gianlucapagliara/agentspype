@@ -63,9 +63,21 @@ def resolve_agent_fqn(
 # Format conversion helpers
 # ---------------------------------------------------------------------------
 
-#: Routing keys that agentspype embeds in each config dict but which are *not*
-#: part of the agent's Pydantic configuration model.
-ROUTING_KEYS: frozenset[str] = frozenset(("agent_module_path", "agent_class_name"))
+#: Routing keys used in the current flat config format.
+ROUTING_KEYS: frozenset[str] = frozenset(("agent_class", "agent_path"))
+
+#: All routing keys (current + legacy) that must be stripped from config
+#: fields before passing data to Pydantic models.
+ALL_ROUTING_KEYS: frozenset[str] = frozenset(
+    (
+        "agent_class",
+        "agent_path",
+        "agent_module_path",
+        "agent_class_name",
+        "agent_name",
+        "agent_configuration",
+    )
+)
 
 
 def extract_config_fields(
@@ -73,40 +85,55 @@ def extract_config_fields(
 ) -> tuple[str, str, dict[str, Any]]:
     """Split an agentspype config dict into routing info and model fields.
 
+    Supports both the new format (``agent_class`` / ``agent_path``) and the
+    legacy format (``agent_class_name`` / ``agent_module_path``).
+
     Returns
     -------
     tuple
-        ``(agent_module_path, agent_class_name, config_fields_dict)``
+        ``(agent_class, agent_path, config_fields_dict)`` where
+        *agent_class* is the class name and *agent_path* is the dotted
+        module path (may be empty).
     """
-    module_path = agent_config.get("agent_module_path", "")
-    class_name = agent_config.get("agent_class_name", "")
-    fields = {k: v for k, v in agent_config.items() if k not in ROUTING_KEYS}
-    return module_path, class_name, fields
+    # New format takes precedence; fall back to legacy keys.
+    class_name: str = (
+        agent_config.get("agent_class", "")
+        or agent_config.get("agent_class_name", "")
+        or agent_config.get("agent_name", "")
+    )
+    agent_path: str = agent_config.get("agent_path", "") or agent_config.get(
+        "agent_module_path", ""
+    )
+
+    fields = {k: v for k, v in agent_config.items() if k not in ALL_ROUTING_KEYS}
+    return class_name, agent_path, fields
 
 
 def wrap_config_fields(
     data: dict[str, Any],
-    agent_module_path: str,
-    agent_class_name: str,
+    agent_class: str,
+    agent_path: str = "",
 ) -> dict[str, Any]:
-    """Wrap config fields back into agentspype format with routing keys."""
-    return {
-        "agent_module_path": agent_module_path,
-        "agent_class_name": agent_class_name,
-        **data,
-    }
+    """Wrap config fields back into agentspype flat format with routing keys."""
+    result: dict[str, Any] = {"agent_class": agent_class}
+    if agent_path:
+        result["agent_path"] = agent_path
+    result.update(data)
+    return result
 
 
 # ---------------------------------------------------------------------------
-# YAML I/O (agentspype envelope)
+# YAML I/O (agentspype flat format)
 # ---------------------------------------------------------------------------
 
 
 def load_agentspype_configs(path: Path) -> list[dict[str, Any]]:
     """Load an agentspype YAML config file.
 
-    Handles both the ``configuration_data`` envelope format and a bare
-    single-agent dict.
+    Handles:
+    - YAML list at root (multiple agents)
+    - Legacy ``configuration_data`` envelope format
+    - Bare single-agent dict (flat format)
 
     Returns
     -------
@@ -116,13 +143,18 @@ def load_agentspype_configs(path: Path) -> list[dict[str, Any]]:
     with open(path) as f:
         raw = yaml.safe_load(f) or {}
 
+    # YAML list at root (new multi-agent format).
+    if isinstance(raw, list):
+        return list(raw)
+
+    # Legacy envelope format.
     if "configuration_data" in raw:
         configs = raw["configuration_data"]
         if isinstance(configs, dict):
             configs = [configs]
         return list(configs)
 
-    # Single agent config (flat dict)
+    # Single agent config (flat dict).
     if isinstance(raw, dict):
         return [raw]
 
@@ -132,9 +164,9 @@ def load_agentspype_configs(path: Path) -> list[dict[str, Any]]:
 def save_agentspype_configs(configs: list[dict[str, Any]], path: Path) -> None:
     """Save agent configs to an agentspype YAML file.
 
-    Uses the ``configuration_data`` envelope when there are multiple agents;
-    writes a flat dict for a single agent.  Leverages ``pydantic-wizard``'s
-    :class:`ModelConfigDumper` for rich type serialization.
+    Writes a YAML list at root for multiple agents; a flat dict for a single
+    agent.  Leverages ``pydantic-wizard``'s :class:`ModelConfigDumper` for
+    rich type serialization.
     """
     from pydantic_wizard.serialization import (
         ModelConfigDumper,
@@ -142,9 +174,7 @@ def save_agentspype_configs(configs: list[dict[str, Any]], path: Path) -> None:
     )
 
     prepared = [prepare_for_serialization(c) for c in configs]
-    document: Any = (
-        {"configuration_data": prepared} if len(prepared) != 1 else prepared[0]
-    )
+    document: Any = prepared if len(prepared) != 1 else prepared[0]
 
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w") as f:
@@ -188,9 +218,8 @@ def wizard_new(
 
     agent_class, config_class = resolve_agent_fqn(agent_fqn)
 
-    # Derive routing keys from the FQN (slash-notation module path).
+    # Derive routing keys from the FQN (dotted module path).
     module_path, _, class_name = agent_fqn.rpartition(".")
-    agent_module_path = module_path.replace(".", "/")
 
     # Prompt the user for every config field.
     data = prompt_model(config_class)
@@ -206,7 +235,11 @@ def wizard_new(
 
     display_summary_table(validated_data, model_name=class_name)
 
-    full_config = wrap_config_fields(validated_data, agent_module_path, class_name)
+    full_config = wrap_config_fields(
+        validated_data,
+        agent_class=class_name,
+        agent_path=module_path,
+    )
 
     if append and output.exists():
         existing = load_agentspype_configs(output)
@@ -240,7 +273,7 @@ def wizard_edit(
     from pydantic_wizard.display import display_error, display_success
     from pydantic_wizard.validation import validate_and_fix
 
-    from agentspype.runner.config.loader import resolve_agent_class
+    from agentspype.runner.config.loader import resolve_agent_from_config
 
     configs = load_agentspype_configs(config_path)
     if not configs:
@@ -250,7 +283,8 @@ def wizard_edit(
     # Select agent to edit when the file contains several.
     if len(configs) > 1:
         choices = [
-            f"{c.get('agent_class_name', '?')} ({c.get('agent_module_path', '?')})"
+            f"{c.get('agent_class', c.get('agent_class_name', '?'))} "
+            f"({c.get('agent_path', c.get('agent_module_path', '?'))})"
             for c in configs
         ]
         selected = questionary.select("Select agent to edit:", choices=choices).ask()
@@ -261,10 +295,9 @@ def wizard_edit(
         idx = 0
 
     config = configs[idx]
-    module_path, class_name, fields = extract_config_fields(config)
+    class_name, agent_path, fields = extract_config_fields(config)
 
-    agent_class = resolve_agent_class(module_path, class_name)
-    config_class = agent_class.definition.configuration_class
+    agent_cls, config_class = resolve_agent_from_config(config)
 
     # Re-prompt with current values as defaults.
     data = prompt_model(config_class, defaults=fields)
@@ -277,7 +310,11 @@ def wizard_edit(
     validated_data = instance.model_dump()
     display_summary_table(validated_data, model_name=class_name)
 
-    configs[idx] = wrap_config_fields(validated_data, module_path, class_name)
+    configs[idx] = wrap_config_fields(
+        validated_data,
+        agent_class=class_name,
+        agent_path=agent_path,
+    )
 
     target = output or config_path
     save_agentspype_configs(configs, target)
@@ -313,7 +350,7 @@ def wizard_validate(
         display_validation_errors,
     )
 
-    from agentspype.runner.config.loader import resolve_agent_class
+    from agentspype.runner.config.loader import resolve_agent_from_config
 
     configs = load_agentspype_configs(config_path)
     if not configs:
@@ -324,17 +361,15 @@ def wizard_validate(
     modified = False
 
     for i, config in enumerate(configs):
-        module_path, class_name, fields = extract_config_fields(config)
+        class_name, agent_path, fields = extract_config_fields(config)
         label = f"[{i + 1}/{len(configs)}] {class_name}"
 
         try:
-            agent_class = resolve_agent_class(module_path, class_name)
-        except (ImportError, AttributeError) as exc:
+            agent_cls, config_class = resolve_agent_from_config(config)
+        except (ImportError, AttributeError, ValueError) as exc:
             display_error(f"{label}: cannot resolve agent class \u2014 {exc}")
             all_valid = False
             continue
-
-        config_class = agent_class.definition.configuration_class
 
         try:
             config_class.model_validate(fields)
@@ -350,7 +385,9 @@ def wizard_validate(
                 instance = validate_and_fix(config_class, fields)
                 if instance is not None:
                     configs[i] = wrap_config_fields(
-                        instance.model_dump(), module_path, class_name
+                        instance.model_dump(),
+                        agent_class=class_name,
+                        agent_path=agent_path,
                     )
                     modified = True
 

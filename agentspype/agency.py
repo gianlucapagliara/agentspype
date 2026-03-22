@@ -62,6 +62,38 @@ class Agency:
         del cls._agent_to_configuration[agent_class]
 
     @classmethod
+    def resolve_by_name(cls, class_name: str) -> type["Agent"]:
+        """Resolve a registered agent class by its ``__name__``.
+
+        Raises
+        ------
+        KeyError
+            If no registered agent class matches *class_name*.
+        ValueError
+            If multiple registered agent classes share the same *class_name*.
+        """
+        matches: list[type[Agent]] = [
+            agent_cls
+            for agent_cls in cls._agent_to_configuration
+            if agent_cls.__name__ == class_name
+        ]
+        if len(matches) == 0:
+            raise KeyError(f"No registered agent class with name '{class_name}'")
+        if len(matches) > 1:
+            raise ValueError(
+                f"Ambiguous agent class name '{class_name}': "
+                f"found {len(matches)} matches"
+            )
+        return matches[0]
+
+    @classmethod
+    def get_registered_agent_classes(cls) -> dict[str, type["Agent"]]:
+        """Return all registered agent classes keyed by ``__name__``."""
+        return {
+            agent_cls.__name__: agent_cls for agent_cls in cls._agent_to_configuration
+        }
+
+    @classmethod
     def get_agent_from_configuration(
         cls, configuration: "AgentConfiguration"
     ) -> "Agent":

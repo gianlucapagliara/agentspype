@@ -143,3 +143,34 @@ def test_agency_logger_messages(test_agent: Agent) -> None:
     """Test that Agency logs registration and deregistration events."""
     Agency.deregister_agent(test_agent)
     Agency.register_agent(test_agent)
+
+
+@pytest.fixture
+def registered_agent_class() -> Generator[type[Agent]]:
+    """Register MockAgent as an agent class and clean up after."""
+    Agency.register_agent_class(MockAgent)
+    yield MockAgent
+    Agency.deregister_agent_class(MockAgent)
+
+
+def test_resolve_by_name_returns_class(
+    registered_agent_class: type[Agent],
+) -> None:
+    """Test that resolve_by_name returns the correct agent class."""
+    agent_cls = Agency.resolve_by_name("MockAgent")
+    assert agent_cls is MockAgent
+
+
+def test_resolve_by_name_raises_key_error_for_unknown() -> None:
+    """Test that resolve_by_name raises KeyError for unknown names."""
+    with pytest.raises(KeyError, match="No registered agent class"):
+        Agency.resolve_by_name("NonExistent")
+
+
+def test_get_registered_agent_classes(
+    registered_agent_class: type[Agent],
+) -> None:
+    """Test that get_registered_agent_classes returns the expected dict."""
+    registered = Agency.get_registered_agent_classes()
+    assert "MockAgent" in registered
+    assert registered["MockAgent"] is MockAgent

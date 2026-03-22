@@ -8,9 +8,11 @@ import pytest
 
 from agentspype.agent.agent import Agent
 from agentspype.runner.config.loader import (
+    extract_config_fields,
     generate_instance_prefix,
     load_agent_configs,
     resolve_agent_class,
+    resolve_agent_from_config,
 )
 
 
@@ -68,3 +70,95 @@ class TestLoadAgentConfigs:
         config = {"value": "None"}
         result = load_agent_configs(config, "x")
         assert result[0]["value"] is None
+
+    def test_list_at_root(self) -> None:
+        config = [{"agent_class": "A"}, {"agent_class": "B"}]
+        result = load_agent_configs(config, "pfx")
+        assert len(result) == 2
+        assert result[0]["agent_class"] == "A"
+        assert result[1]["agent_class"] == "B"
+
+    def test_list_at_root_with_substitution(self) -> None:
+        config = [{"name": "$INSTANCE_PREFIX_x"}]
+        result = load_agent_configs(config, "pfx")
+        assert result[0]["name"] == "pfx_x"
+
+
+class TestExtractConfigFields:
+    def test_strips_new_routing_keys(self) -> None:
+        raw = {
+            "agent_class": "MyAgent",
+            "agent_path": "pkg/agents/my_agent",
+            "param_a": 1,
+            "param_b": "hello",
+        }
+        result = extract_config_fields(raw)
+        assert "agent_class" not in result
+        assert "agent_path" not in result
+        assert result == {"param_a": 1, "param_b": "hello"}
+
+    def test_strips_legacy_routing_keys(self) -> None:
+        raw = {
+            "agent_module_path": "pkg.agents",
+            "agent_class_name": "Foo",
+            "agent_name": "foo",
+            "agent_path": "pkg/agents",
+            "agent_configuration": {"nested_key": 42},
+            "top_level": True,
+        }
+        result = extract_config_fields(raw)
+        assert "agent_module_path" not in result
+        assert "agent_class_name" not in result
+        assert "agent_name" not in result
+        assert "agent_path" not in result
+        assert "agent_configuration" not in result
+        assert result["nested_key"] == 42
+        assert result["top_level"] is True
+
+    def test_agent_configuration_merges(self) -> None:
+        raw = {
+            "agent_class": "X",
+            "agent_configuration": {"a": 1, "b": 2},
+            "c": 3,
+        }
+        result = extract_config_fields(raw)
+        assert result == {"a": 1, "b": 2, "c": 3}
+
+    def test_empty_routing(self) -> None:
+        raw = {"foo": "bar"}
+        result = extract_config_fields(raw)
+        assert result == {"foo": "bar"}
+
+
+class TestResolveAgentFromConfig:
+    def test_fallback_to_path_resolution(self) -> None:
+        raw = {
+            "agent_class": "MockAgent",
+            "agent_path": "tests/test_agency",
+        }
+        agent_cls, config_cls = resolve_agent_from_config(raw)
+        assert agent_cls.__name__ == "MockAgent"
+
+    def test_legacy_format(self) -> None:
+        raw = {
+            "agent_class_name": "MockAgent",
+            "agent_module_path": "tests.test_agency",
+        }
+        agent_cls, _ = resolve_agent_from_config(raw)
+        assert agent_cls.__name__ == "MockAgent"
+
+    def test_bl_agents_format(self) -> None:
+        raw = {
+            "agent_name": "MockAgent",
+            "agent_path": "tests/test_agency",
+        }
+        agent_cls, _ = resolve_agent_from_config(raw)
+        assert agent_cls.__name__ == "MockAgent"
+
+    def test_missing_class_info_raises(self) -> None:
+        with pytest.raises(ValueError, match="must contain"):
+            resolve_agent_from_config({"agent_path": "some/path"})
+
+    def test_unresolvable_class_raises(self) -> None:
+        with pytest.raises(ValueError, match="not registered"):
+            resolve_agent_from_config({"agent_class": "NoSuchAgent"})
