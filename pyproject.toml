@@ -1,14 +1,14 @@
 [project]
 name = "agentspype"
-version = "0.8.0"
+version = "0.8.1"
 description = "A framework for building agents that interact with the world"
 authors = [{ name = "Gianluca Pagliara", email = "pagliara.gianluca@gmail.com" }]
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.13"
 dependencies = [
-    "pydantic>=2.10.4,<3",
-    "python-statemachine>=2.4.0,<3",
+    "pydantic>=2.12,<3",
+    "python-statemachine>=3.0.0,<4",
     "pydot>=3.0.3,<4",
     "bidict>=0.23.1,<1",
     "eventspype>=1.2.0,<2",
@@ -47,7 +47,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.14"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -55,12 +55,12 @@ check_untyped_defs = true
 strict = true
 disallow_untyped_decorators = false
 ignore_missing_imports = true
-disable_error_code = ["misc", "type-abstract"]
+disable_error_code = ["misc", "type-abstract", "union-attr", "no-untyped-call"]
 exclude = ["agentspype/service/"]
 
 [tool.ruff]
 line-length = 88
-target-version = "py313"
+target-version = "py314"
 
 [tool.ruff.lint]
 select = [

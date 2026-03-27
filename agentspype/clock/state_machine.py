@@ -52,7 +52,7 @@ class ClockStateMachine(AgentStateMachine):
     # === Casting ===
 
     @property
-    def agent(self) -> "ClockAgent":
+    def agent(self) -> ClockAgent:
         return super().agent  # type: ignore[return-value]
 
     # === Properties ===
@@ -105,7 +105,7 @@ class BasicClockStateMachine(ClockStateMachine, BasicAgentStateMachine):
     metaclass and adds ``running``, ``activate``, ``deactivate``, and ``tick``.
     """
 
-    def __init__(self, agent: "ClockAgent") -> None:
+    def __init__(self, agent: ClockAgent) -> None:
         super().__init__(agent)
 
     # === States ===
@@ -114,7 +114,7 @@ class BasicClockStateMachine(ClockStateMachine, BasicAgentStateMachine):
     # === Transitions ===
     activate: ClassVar[TransitionList] = ClockStateMachine.idle.to(running)
     deactivate: ClassVar[TransitionList] = running.to(ClockStateMachine.idle)
-    tick: ClassVar[TransitionList] = running.to.itself()  # type: ignore[no-untyped-call]
+    tick: ClassVar[TransitionList] = running.to.itself()
     stop: ClassVar[TransitionList] = running.to(ClockStateMachine.end)
 
     # === State action stubs ===

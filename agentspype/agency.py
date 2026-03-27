@@ -10,41 +10,46 @@ if TYPE_CHECKING:
 
 
 class Agency:
-    initialized_agents: list["Agent"] = []
-    _deactivating_agents: list["Agent"] = []
-    _agent_to_configuration: bidict[type["Agent"], type["AgentConfiguration"]] = (
-        bidict()
-    )
+    initialized_agents: list[Agent] = []
+    _deactivating_agents: list[Agent] = []
+    _agent_to_configuration: bidict[type[Agent], type[AgentConfiguration]] = bidict()
     _logger: logging.Logger = logging.getLogger("agentspype.agency")
 
     @classmethod
-    def register_agent(cls, agent: "Agent") -> None:
+    def register_agent(cls, agent: Agent) -> None:
         """Register an initialized agent."""
         if agent not in cls.initialized_agents:
             cls._logger.info(f"[Agency] Registered: {agent.complete_name}")
             cls.initialized_agents.append(agent)
 
     @classmethod
-    def deregister_agent(cls, agent: "Agent") -> None:
+    def deregister_agent(cls, agent: Agent) -> None:
         """Deregister an initialized agent."""
         if agent in cls.initialized_agents:
             cls._logger.info(f"[Agency] Deregistered: {agent.complete_name}")
             cls.initialized_agents.remove(agent)
             cls._deactivating_agents.append(agent)
 
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                # No running event loop — remove synchronously.
+                cls._deactivating_agents.remove(agent)
+                return
+
             async def cleanup() -> None:
                 await asyncio.sleep(0)
                 cls._deactivating_agents.remove(agent)
 
-            asyncio.ensure_future(cleanup())
+            loop.create_task(cleanup())
 
     @classmethod
-    def get_active_agents(cls) -> list["Agent"]:
+    def get_active_agents(cls) -> list[Agent]:
         """Get a list of all active agents."""
         return list(cls.initialized_agents)
 
     @classmethod
-    def register_agent_class(cls, agent_class: type["Agent"]) -> None:
+    def register_agent_class(cls, agent_class: type[Agent]) -> None:
         """Register an agent class from its configuration."""
         if agent_class in cls._agent_to_configuration:
             return
@@ -54,7 +59,7 @@ class Agency:
         )
 
     @classmethod
-    def deregister_agent_class(cls, agent_class: type["Agent"]) -> None:
+    def deregister_agent_class(cls, agent_class: type[Agent]) -> None:
         """Deregister an agent class."""
         if agent_class not in cls._agent_to_configuration:
             return
@@ -62,7 +67,7 @@ class Agency:
         del cls._agent_to_configuration[agent_class]
 
     @classmethod
-    def resolve_by_name(cls, class_name: str) -> type["Agent"]:
+    def resolve_by_name(cls, class_name: str) -> type[Agent]:
         """Resolve a registered agent class by its ``__name__``.
 
         Raises
@@ -87,16 +92,14 @@ class Agency:
         return matches[0]
 
     @classmethod
-    def get_registered_agent_classes(cls) -> dict[str, type["Agent"]]:
+    def get_registered_agent_classes(cls) -> dict[str, type[Agent]]:
         """Return all registered agent classes keyed by ``__name__``."""
         return {
             agent_cls.__name__: agent_cls for agent_cls in cls._agent_to_configuration
         }
 
     @classmethod
-    def get_agent_from_configuration(
-        cls, configuration: "AgentConfiguration"
-    ) -> "Agent":
+    def get_agent_from_configuration(cls, configuration: AgentConfiguration) -> Agent:
         """Get an agent from its configuration."""
         if type(configuration) not in cls._agent_to_configuration.inverse:
             raise ValueError(
