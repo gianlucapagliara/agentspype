@@ -4,6 +4,8 @@ Provides readiness-checking logic and the ``launch_tick`` driver method
 that advances the state machine on each clock tick.
 """
 
+from __future__ import annotations
+
 from abc import abstractmethod
 from typing import TYPE_CHECKING, ClassVar
 

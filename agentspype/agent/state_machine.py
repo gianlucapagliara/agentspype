@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import weakref
 from abc import abstractmethod
 from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
@@ -251,7 +253,7 @@ class AgentStateMachine(StateMachine, metaclass=AgentStateMachineMeta):
     start: ClassVar[TransitionList]
     stop: ClassVar[TransitionList]
 
-    def __init__(self, agent: "Agent") -> None:
+    def __init__(self, agent: Agent) -> None:
         super().__init__()
         self._agent = weakref.ref(agent)
         self._strong_agent: Agent | None = None
@@ -303,7 +305,7 @@ class AgentStateMachine(StateMachine, metaclass=AgentStateMachineMeta):
     # === Properties ===
 
     @property
-    def agent(self) -> "Agent":
+    def agent(self) -> Agent:
         agent = self._agent()
         if agent is None:
             raise RuntimeError(
