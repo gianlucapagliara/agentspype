@@ -369,6 +369,53 @@ def test_is_final_property(test_agent: MockAgent) -> None:
     assert test_agent.is_initial is False
 
 
+def test_agent_survives_end_transition() -> None:
+    """Test that the agent is not GC'd during the end-state transition.
+
+    on_enter_end triggers teardown which removes the agent from Agency.
+    The state machine must pin a strong reference so that after_transition
+    (which accesses self.agent) does not hit a dead weakref.
+    """
+    import gc
+    import weakref
+
+    agent = MockAgent({})
+    agent_ref = weakref.ref(agent)
+    machine = agent.machine
+
+    # Transition to end — this calls on_enter_end → teardown
+    machine.start_to_end()
+
+    # Drop the only local strong reference
+    del agent
+
+    # Force a collection cycle
+    gc.collect()
+
+    # The state machine's _strong_agent should keep the agent alive
+    assert agent_ref() is not None, "Agent was collected before transition completed"
+    assert machine._strong_agent is not None
+
+
+def test_after_transition_runs_during_end_state() -> None:
+    """Test that after_transition can access self.agent when entering end state.
+
+    Regression test: without a strong reference pin, after_transition would
+    raise RuntimeError because the weakref expired mid-transition.
+    """
+    agent = MockAgent({})
+    publishing = agent.publishing
+    assert isinstance(publishing, MockPublishing)
+
+    # Transition to end — after_transition should publish without error
+    agent.machine.start_to_end()
+
+    # after_transition must have executed and published the transition event
+    assert len(publishing.published_events) == 1
+    event_pub, event_data = publishing.published_events[0]
+    assert event_data.event == "start_to_end"
+
+
 def test_state_machine_before_transition(test_agent: MockAgent) -> None:
     """Test state machine before_transition hook."""
     # Same state transition should not trigger debug log

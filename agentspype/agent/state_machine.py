@@ -254,11 +254,17 @@ class AgentStateMachine(StateMachine, metaclass=AgentStateMachineMeta):
     def __init__(self, agent: "Agent") -> None:
         super().__init__()
         self._agent = weakref.ref(agent)
+        self._strong_agent: Agent | None = None
         self._should_stop = False
 
     # === State actions ===
 
     def on_enter_end(self) -> None:
+        # Pin a strong reference so the agent survives until the state-machine
+        # transition fully completes (after_transition, etc.).  Without this,
+        # Python 3.14's more aggressive GC can collect the agent as soon as
+        # teardown() removes it from Agency's lists.
+        self._strong_agent = self.agent
         self.agent.teardown()
 
     # === Transitions Actions ===
