@@ -107,6 +107,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=".diagrams",
         help="Directory to save diagrams (default: .diagrams).",
     )
+    plot_parser.add_argument(
+        "--no-cross",
+        action="store_true",
+        default=False,
+        help="Skip cross-agent relationship diagram generation.",
+    )
 
     # -- config -------------------------------------------------------------
     config_parser = subparsers.add_parser(
@@ -230,7 +236,11 @@ def _plot_command(args: argparse.Namespace) -> None:
     from agentspype.runner.plot import plot_agents
 
     try:
-        plot_agents(args.modules, output_dir=args.output_dir)
+        plot_agents(
+            args.modules,
+            output_dir=args.output_dir,
+            cross_agent=not args.no_cross,
+        )
     except Exception as exc:
         logging.getLogger(__name__).error("Plot failed: %s", exc)
         raise SystemExit(1) from exc

@@ -1,9 +1,12 @@
 """Tests for the visualization system improvements."""
 
 from collections.abc import Generator
+from enum import Enum
 from typing import Any
 
 import pytest
+from eventspype.pub.publication import EventPublication
+from eventspype.sub.subscription import EventSubscription
 
 from agentspype.agent.agent import Agent
 from agentspype.agent.configuration import AgentConfiguration
@@ -14,6 +17,7 @@ from agentspype.agent.state_machine import AgentStateMachine
 from agentspype.agent.status import AgentStatus
 from agentspype.fsm import State
 from agentspype.visualization.agent_visualization import AgentVisualization
+from agentspype.visualization.cross_agent_visualization import CrossAgentVisualization
 from agentspype.visualization.listening_visualization import ListeningVisualization
 from agentspype.visualization.state_machine_visualization import (
     StateMachineVisualization,
@@ -745,3 +749,365 @@ class TestHookAnnotations:
         assert len(idle_nodes) == 1
         label = idle_nodes[0].get_label().strip('"')
         assert "on_enter_idle" in label
+
+
+# === 7. Cross-Agent Visualization ===
+
+# -- Publisher agent: publishes a custom event --
+
+
+class ProducerPublishing(StateAgentPublishing):
+    class Events(Enum):
+        DataReady = "data_ready"
+
+    data_ready = EventPublication(event_tag=Events.DataReady, event_class=dict)
+
+
+class ProducerStateMachine(AgentStateMachine):
+    starting = State("Starting", initial=True)
+    idle = State("Idle")
+    end = State("End", final=True)
+
+    start = starting.to(idle)
+    stop = starting.to(end) | idle.to(end)
+
+    def __init__(self, agent: Agent) -> None:
+        super().__init__(agent)
+
+    def after_transition(self, event: str, state: State) -> None:
+        pass
+
+
+class ProducerAgent(Agent):
+    definition = AgentDefinition(
+        configuration_class=AgentConfiguration,
+        events_publishing_class=ProducerPublishing,
+        events_listening_class=VizListening,
+        state_machine_class=ProducerStateMachine,
+        status_class=AgentStatus,
+    )
+
+
+# -- Consumer agent: listens to ProducerPublishing --
+
+
+class ConsumerListening(AgentListening):
+    def on_data(self, event: Any) -> None:
+        pass
+
+    data_subscription = EventSubscription(
+        publisher_class=ProducerPublishing,
+        event_tag=ProducerPublishing.Events.DataReady,
+        callback=on_data,
+    )
+
+    def subscribe(self) -> None:
+        pass
+
+    def unsubscribe(self) -> None:
+        pass
+
+
+class ConsumerAgent(Agent):
+    definition = AgentDefinition(
+        configuration_class=AgentConfiguration,
+        events_publishing_class=VizPublishing,
+        events_listening_class=ConsumerListening,
+        state_machine_class=VizStateMachine,
+        status_class=AgentStatus,
+    )
+
+
+# -- Self-wiring agent: listens to its own events --
+
+
+class SelfWiredListening(AgentListening):
+    def on_self_event(self, event: Any) -> None:
+        pass
+
+    self_subscription = EventSubscription(
+        publisher_class=ProducerPublishing,
+        event_tag=ProducerPublishing.Events.DataReady,
+        callback=on_self_event,
+    )
+
+    def subscribe(self) -> None:
+        pass
+
+    def unsubscribe(self) -> None:
+        pass
+
+
+class SelfWiredAgent(Agent):
+    definition = AgentDefinition(
+        configuration_class=AgentConfiguration,
+        events_publishing_class=ProducerPublishing,
+        events_listening_class=SelfWiredListening,
+        state_machine_class=VizStateMachine,
+        status_class=AgentStatus,
+    )
+
+
+# -- External publisher listener: listens to a class not owned by any agent --
+
+
+class ExternalPublisher(StateAgentPublishing):
+    """A publishing class not used as any agent's publishing class."""
+
+    class Events(Enum):
+        ExternalEvent = "external_event"
+
+    external_event = EventPublication(event_tag=Events.ExternalEvent, event_class=dict)
+
+
+class ExternalListening(AgentListening):
+    def on_external(self, event: Any) -> None:
+        pass
+
+    ext_subscription = EventSubscription(
+        publisher_class=ExternalPublisher,
+        event_tag=ExternalPublisher.Events.ExternalEvent,
+        callback=on_external,
+    )
+
+    def subscribe(self) -> None:
+        pass
+
+    def unsubscribe(self) -> None:
+        pass
+
+
+class ExternalListenerAgent(Agent):
+    definition = AgentDefinition(
+        configuration_class=AgentConfiguration,
+        events_publishing_class=VizPublishing,
+        events_listening_class=ExternalListening,
+        state_machine_class=VizStateMachine,
+        status_class=AgentStatus,
+    )
+
+
+@pytest.fixture
+def producer_agent() -> Generator[ProducerAgent]:
+    agent = ProducerAgent({})
+    yield agent
+    try:
+        agent.teardown()
+    except Exception:
+        pass
+
+
+@pytest.fixture
+def consumer_agent() -> Generator[ConsumerAgent]:
+    agent = ConsumerAgent({})
+    yield agent
+    try:
+        agent.teardown()
+    except Exception:
+        pass
+
+
+@pytest.fixture
+def self_wired_agent() -> Generator[SelfWiredAgent]:
+    agent = SelfWiredAgent({})
+    yield agent
+    try:
+        agent.teardown()
+    except Exception:
+        pass
+
+
+@pytest.fixture
+def external_listener_agent() -> Generator[ExternalListenerAgent]:
+    agent = ExternalListenerAgent({})
+    yield agent
+    try:
+        agent.teardown()
+    except Exception:
+        pass
+
+
+class TestCrossAgentEventWiring:
+    def test_publisher_to_listener_edge(
+        self,
+        producer_agent: ProducerAgent,
+        consumer_agent: ConsumerAgent,
+    ) -> None:
+        """An edge is drawn from publisher agent to listener agent."""
+        viz = CrossAgentVisualization()
+        graph = viz.create_visualization([producer_agent, consumer_agent])
+
+        edge_pairs = [
+            (e.get_source().strip('"'), e.get_destination().strip('"'))
+            for e in graph.get_edge_list()
+        ]
+        assert ("agent_ProducerAgent", "agent_ConsumerAgent") in edge_pairs
+
+    def test_class_level_wiring(self) -> None:
+        """Event wiring works from class references (no instances needed)."""
+        viz = CrossAgentVisualization()
+        graph = viz.create_visualization([ProducerAgent, ConsumerAgent])
+
+        edge_pairs = [
+            (e.get_source().strip('"'), e.get_destination().strip('"'))
+            for e in graph.get_edge_list()
+        ]
+        assert ("agent_ProducerAgent", "agent_ConsumerAgent") in edge_pairs
+
+    def test_no_incoming_edges_for_non_listener(
+        self,
+        producer_agent: ProducerAgent,
+        consumer_agent: ConsumerAgent,
+    ) -> None:
+        """Producer agent has no incoming event edges (VizListening has no subscriptions)."""
+        viz = CrossAgentVisualization()
+        graph = viz.create_visualization([producer_agent, consumer_agent])
+
+        incoming_to_producer = [
+            e
+            for e in graph.get_edge_list()
+            if e.get_destination().strip('"') == "agent_ProducerAgent"
+        ]
+        assert len(incoming_to_producer) == 0
+
+    def test_self_wiring_edge(self, self_wired_agent: SelfWiredAgent) -> None:
+        """An agent listening to its own events creates a self-loop edge."""
+        viz = CrossAgentVisualization()
+        graph = viz.create_visualization([self_wired_agent])
+
+        self_edges = [
+            e
+            for e in graph.get_edge_list()
+            if e.get_source().strip('"') == e.get_destination().strip('"')
+            and e.get_source().strip('"') == "agent_SelfWiredAgent"
+        ]
+        assert len(self_edges) > 0
+
+    def test_external_publisher_node(
+        self, external_listener_agent: ExternalListenerAgent
+    ) -> None:
+        """A listener subscribing to a non-agent publisher creates an external node."""
+        viz = CrossAgentVisualization()
+        graph = viz.create_visualization([external_listener_agent])
+
+        node_names = {n.get_name().strip('"') for n in graph.get_node_list()}
+        ext_nodes = [n for n in node_names if n.startswith("ext_")]
+        assert len(ext_nodes) > 0
+
+    def test_event_wiring_disabled(
+        self,
+        producer_agent: ProducerAgent,
+        consumer_agent: ConsumerAgent,
+    ) -> None:
+        """No event edges when show_event_wiring=False."""
+        viz = CrossAgentVisualization()
+        graph = viz.create_visualization(
+            [producer_agent, consumer_agent], show_event_wiring=False
+        )
+
+        # Only agent nodes, no event edges
+        edge_pairs = [
+            (e.get_source().strip('"'), e.get_destination().strip('"'))
+            for e in graph.get_edge_list()
+        ]
+        assert ("agent_ProducerAgent", "agent_ConsumerAgent") not in edge_pairs
+
+
+class TestCrossAgentParentChild:
+    def test_parent_child_edge(
+        self,
+        producer_agent: ProducerAgent,
+        consumer_agent: ConsumerAgent,
+    ) -> None:
+        """Parent-child relationship renders a dashed edge."""
+        consumer_agent.parent_id = id(producer_agent)
+
+        viz = CrossAgentVisualization()
+        graph = viz.create_visualization([producer_agent, consumer_agent])
+
+        parent_edges = [
+            e
+            for e in graph.get_edge_list()
+            if e.get_label() and "parent" in e.get_label().strip('"')
+        ]
+        assert len(parent_edges) > 0
+        assert parent_edges[0].obj_dict["attributes"]["style"] == "dashed"
+
+    def test_no_parent_child_without_relationship(
+        self,
+        producer_agent: ProducerAgent,
+        consumer_agent: ConsumerAgent,
+    ) -> None:
+        """No parent-child edges when agents have no parent_id set."""
+        viz = CrossAgentVisualization()
+        graph = viz.create_visualization([producer_agent, consumer_agent])
+
+        parent_edges = [
+            e
+            for e in graph.get_edge_list()
+            if e.get_label() and "parent" in e.get_label().strip('"')
+        ]
+        assert len(parent_edges) == 0
+
+    def test_parent_child_disabled(
+        self,
+        producer_agent: ProducerAgent,
+        consumer_agent: ConsumerAgent,
+    ) -> None:
+        """No parent-child edges when show_parent_child=False."""
+        consumer_agent.parent_id = id(producer_agent)
+
+        viz = CrossAgentVisualization()
+        graph = viz.create_visualization(
+            [producer_agent, consumer_agent], show_parent_child=False
+        )
+
+        parent_edges = [
+            e
+            for e in graph.get_edge_list()
+            if e.get_label() and "parent" in e.get_label().strip('"')
+        ]
+        assert len(parent_edges) == 0
+
+    def test_parent_child_class_level_skipped(self) -> None:
+        """Parent-child is not rendered for class-level visualization."""
+        viz = CrossAgentVisualization()
+        graph = viz.create_visualization([ProducerAgent, ConsumerAgent])
+
+        parent_edges = [
+            e
+            for e in graph.get_edge_list()
+            if e.get_label() and "parent" in e.get_label().strip('"')
+        ]
+        assert len(parent_edges) == 0
+
+
+class TestCrossAgentEmpty:
+    def test_empty_agent_list(self) -> None:
+        """Empty list produces an empty graph."""
+        viz = CrossAgentVisualization()
+        graph = viz.create_visualization([])
+        assert len(graph.get_node_list()) == 0
+        assert len(graph.get_edge_list()) == 0
+
+    def test_single_agent_no_event_edges(self, plain_agent: PlainAgent) -> None:
+        """Single agent with no subscriptions has no event edges."""
+        viz = CrossAgentVisualization()
+        graph = viz.create_visualization([plain_agent])
+
+        node_names = {n.get_name().strip('"') for n in graph.get_node_list()}
+        assert "agent_PlainAgent" in node_names
+        assert len(graph.get_edge_list()) == 0
+
+    def test_agent_nodes_present(
+        self,
+        producer_agent: ProducerAgent,
+        consumer_agent: ConsumerAgent,
+    ) -> None:
+        """Both agent nodes appear in the diagram."""
+        viz = CrossAgentVisualization()
+        graph = viz.create_visualization([producer_agent, consumer_agent])
+
+        node_names = {n.get_name().strip('"') for n in graph.get_node_list()}
+        assert "agent_ProducerAgent" in node_names
+        assert "agent_ConsumerAgent" in node_names
