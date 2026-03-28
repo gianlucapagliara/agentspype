@@ -30,7 +30,12 @@ class ExampleStateMachine(AgentStateMachine):
     resume_processing = waiting.to(processing)
     complete_successfully = processing.to(completed)
     fail_processing = processing.to(failed) | waiting.to(failed)
-    stop = starting.to(failed) | processing.to(failed) | waiting.to(failed)
+    stop = (
+        starting.to(failed)
+        | processing.to(failed)
+        | waiting.to(failed)
+        | completed.to(end)
+    )
     end = failed.to(end) | completed.to(end)
 
     def after_transition(self, event: str, state: State) -> None:

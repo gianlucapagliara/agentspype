@@ -481,14 +481,14 @@ class TestMultipleInheritanceMixin:
 
 
 class ConcreteMixinNoStop(MixinSM, BasicAgentStateMachine):
-    """Like ConcreteMixinSM but without an explicit stop from running.
+    """Like ConcreteMixinSM but with a minimal stop for running.
     Resembles ``CompleteHorologistStateMachineWithoutStop``."""
 
     running = State("Running")
 
     ready = MixinSM.idle.to(running)
     not_ready = running.to(MixinSM.idle)
-    # No explicit stop: default stop (starting→end, idle→end) is inherited
+    stop = running.to(MixinSM.end)
 
 
 class SubOfNoStop(ConcreteMixinNoStop):
@@ -603,8 +603,7 @@ class GrandchildSM(ChildSM):
     processing = State("Processing")
     process = ChildSM.waiting.to(processing)
     done = processing.to(ChildSM.end)
-
-    # Does NOT redefine stop — should inherit the merged version from ChildSM
+    stop = processing.to(ChildSM.end)
 
 
 class TestGrandchildInheritance:
@@ -660,6 +659,7 @@ class TestGrandchildInheritance:
             ("idle", ["start"]),
             ("running", ["start", "ready"]),
             ("waiting", ["start", "ready", "launch"]),
+            ("processing", ["start", "ready", "launch", "process"]),
         ]:
             agent = _make_agent(GrandchildSM)
             try:
@@ -673,3 +673,112 @@ class TestGrandchildInheritance:
                     agent.teardown()
                 except Exception:
                     pass
+
+
+# ---------------------------------------------------------------------------
+# Tests: stop transition validation
+# ---------------------------------------------------------------------------
+
+
+class TestStopTransitionValidation:
+    """AgentStateMachine metaclass must reject classes with non-final states
+    missing a 'stop' transition."""
+
+    def test_missing_stop_raises_error(self) -> None:
+        """A custom state without stop must cause ValueError at class creation."""
+        import pytest
+
+        with pytest.raises(ValueError, match="Missing 'stop' for: running"):
+
+            class BadSM(AgentStateMachine):
+                running = State("Running")
+                go = AgentStateMachine.idle.to(running)
+
+                def after_transition(self, event: str, state: State) -> None:
+                    pass
+
+    def test_multiple_missing_states_listed(self) -> None:
+        """Error message lists all states missing stop."""
+        import pytest
+
+        with pytest.raises(ValueError, match="processing") as exc_info:
+
+            class BadSM2(AgentStateMachine):
+                running = State("Running")
+                processing = State("Processing")
+                go = AgentStateMachine.idle.to(running)
+                process = running.to(processing)
+
+                def after_transition(self, event: str, state: State) -> None:
+                    pass
+
+        assert "running" in str(exc_info.value)
+        assert "processing" in str(exc_info.value)
+
+    def test_internal_stop_satisfies_validation(self) -> None:
+        """An internal self-transition on stop counts as defining stop."""
+
+        class InternalStopSM(AgentStateMachine):
+            running = State("Running")
+            go = AgentStateMachine.idle.to(running)
+            stop = running.to.itself(internal=True)
+
+            def after_transition(self, event: str, state: State) -> None:
+                pass
+
+        assert "running" in {s.id for s in InternalStopSM.states}
+
+    def test_stop_to_cleanup_state_satisfies_validation(self) -> None:
+        """Stop transitioning to a non-end cleanup state is valid."""
+
+        class CleanupSM(AgentStateMachine):
+            running = State("Running")
+            cleaning = State("Cleaning")
+            go = AgentStateMachine.idle.to(running)
+            stop = running.to(cleaning) | cleaning.to(AgentStateMachine.end)
+
+            def after_transition(self, event: str, state: State) -> None:
+                pass
+
+        assert "cleaning" in {s.id for s in CleanupSM.states}
+
+    def test_default_states_pass_validation(self) -> None:
+        """BasicAgentStateMachine with only default states passes."""
+
+        class MinimalSM(AgentStateMachine):
+            def after_transition(self, event: str, state: State) -> None:
+                pass
+
+        assert "starting" in {s.id for s in MinimalSM.states}
+
+    def test_child_adding_state_must_define_stop(self) -> None:
+        """A child class adding a new state must cover it with stop."""
+        import pytest
+
+        class ParentSM(AgentStateMachine):
+            def after_transition(self, event: str, state: State) -> None:
+                pass
+
+        with pytest.raises(ValueError, match="extra"):
+
+            class ChildWithoutStop(ParentSM):
+                extra = State("Extra")
+                go = ParentSM.idle.to(extra)
+
+                def after_transition(self, event: str, state: State) -> None:
+                    pass
+
+    def test_plain_state_machine_not_affected(self) -> None:
+        """Plain StateMachine does not enforce stop validation."""
+        from agentspype.fsm.machine import StateMachine
+
+        class PlainSM(StateMachine):
+            starting = State("Starting", initial=True)
+            idle = State("Idle")
+            running = State("Running")
+            end = State("End", final=True)
+
+            start = starting.to(idle)
+            go = idle.to(running)
+
+        assert "running" in {s.id for s in PlainSM.states}

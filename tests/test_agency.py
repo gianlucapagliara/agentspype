@@ -27,6 +27,7 @@ class MockStateMachine(AgentStateMachine):
     start_to_idle = starting.to(idle)
     idle_to_mock = idle.to(mock)
     mock_to_end = mock.to(end)
+    stop = starting.to(end) | idle.to(end) | mock.to(end)
 
     def __init__(self, agent: Agent) -> None:
         super().__init__(agent)

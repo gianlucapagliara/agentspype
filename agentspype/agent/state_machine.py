@@ -34,7 +34,26 @@ class AgentStateMachineMeta(StateMachineMeta):
         if name == "AgentStateMachine":
             return super().__new__(mcs, name, bases, namespace)
 
-        return super().__new__(mcs, name, bases, namespace)
+        cls = super().__new__(mcs, name, bases, namespace)
+
+        # Validate: every non-final state must have a 'stop' event defined.
+        # This forces developers to explicitly decide stop semantics per state.
+        states: list[State] = getattr(cls, "_states", [])
+        transition_map: dict[tuple[str, str], Any] = getattr(cls, "_transition_map", {})
+        missing = [
+            state.id
+            for state in states
+            if not state.final and (state.id, "stop") not in transition_map
+        ]
+        if missing:
+            raise ValueError(
+                f"{name}: All non-final states must define a 'stop' transition. "
+                f"Missing 'stop' for: {', '.join(sorted(missing))}. "
+                f"Each state must explicitly handle the stop signal "
+                f"(e.g., state.to(end), state.to(cleanup), or state.to.itself(internal=True))."
+            )
+
+        return cls
 
 
 class AgentStateMachine(StateMachine, metaclass=AgentStateMachineMeta):

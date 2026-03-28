@@ -28,7 +28,7 @@ class VizStateMachine(AgentStateMachine):
     end = State("End", final=True)
 
     start = starting.to(idle)
-    stop = idle.to(end)
+    stop = starting.to(end) | idle.to(end)
 
     def __init__(self, agent: Agent) -> None:
         super().__init__(agent)

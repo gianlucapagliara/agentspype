@@ -59,6 +59,7 @@ class OtherMockStateMachine(AgentStateMachine):
     start_processing = starting.to(processing)
     complete = processing.to(completed)
     fail = processing.to(failed)
+    stop = starting.to(completed) | processing.to(completed)
 
     def __init__(self, agent: Agent) -> None:
         super().__init__(agent)
