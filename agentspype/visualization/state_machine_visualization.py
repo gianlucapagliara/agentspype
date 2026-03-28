@@ -33,6 +33,7 @@ class StateMachineVisualization(BaseVisualization):
         "highlight_border": "#d6b656",
         "edge_default": "#2d3436",
         "edge_event": "#2d3436",
+        "internal_edge": "#7f8c8d",  # muted gray for internal transitions
     }
 
     def create_visualization(  # noqa: C901
@@ -41,6 +42,8 @@ class StateMachineVisualization(BaseVisualization):
         graph: pydot.Dot | None = None,
         current_state: State | None = None,
         edge_style_map: dict[str, dict[str, str]] | None = None,
+        show_guards: bool = True,
+        show_hooks: bool = True,
         **kwargs: Any,
     ) -> pydot.Dot:
         """Create a visualization of the state machine.
@@ -53,6 +56,11 @@ class StateMachineVisualization(BaseVisualization):
                 Each value is a dict with optional keys: "color", "style", "penwidth".
                 Default map styles "start" as green/dashed and "stop" as red/dashed.
                 Pass a custom dict to override or extend the defaults.
+            show_guards: Whether to show guard conditions (cond/unless) on
+                transition edges. Defaults to True.
+            show_hooks: Whether to show hook methods (on_enter_*, on_exit_*,
+                before_*, on_*, after_*) on states and transitions.
+                Defaults to False.
             **kwargs: Additional arguments.
 
         Returns:
@@ -87,6 +95,10 @@ class StateMachineVisualization(BaseVisualization):
         )
         dot_graph.add_node(initial_node)
 
+        # Collect hook tables for annotation
+        enter_hooks = getattr(state_machine_class, "_enter_hooks", {})
+        exit_hooks = getattr(state_machine_class, "_exit_hooks", {})
+
         # Add state nodes
         initial_state = None
         for state_id, state in states_map.items():
@@ -113,9 +125,21 @@ class StateMachineVisualization(BaseVisualization):
                 color = self._COLORS["highlight_border"]
                 peripheries = "2"
 
+            # Build label: plain name or record with hooks
+            state_label = state.name or state_id
+            if show_hooks:
+                hooks: list[str] = []
+                if state_id in enter_hooks:
+                    hooks.append(enter_hooks[state_id])
+                if state_id in exit_hooks:
+                    hooks.append(exit_hooks[state_id])
+                if hooks:
+                    hooks_str = "\\l".join(hooks) + "\\l"
+                    state_label = f"{{{state_label} | {hooks_str}}}"
+
             node = pydot.Node(
                 state_id,
-                label=state.name or state_id,
+                label=state_label,
                 shape=shape,
                 fillcolor=fillcolor,
                 style="filled",
@@ -138,6 +162,11 @@ class StateMachineVisualization(BaseVisualization):
                 )
             )
 
+        # Collect event hook tables for edge annotation
+        event_hooks = getattr(state_machine_class, "_event_hooks", {})
+        before_event_hooks = getattr(state_machine_class, "_before_event_hooks", {})
+        after_event_hooks = getattr(state_machine_class, "_after_event_hooks", {})
+
         # Add transition edges
         transition_map = state_machine_class._transition_map
         seen_edges: set[tuple[str, str, str]] = set()
@@ -158,7 +187,12 @@ class StateMachineVisualization(BaseVisualization):
                     "penwidth": "1.2",
                 }
 
-                # Apply edge styles
+                # Internal transitions: dotted + muted color
+                if t.internal:
+                    edge_attrs["style"] = "dotted"
+                    edge_attrs["color"] = self._COLORS["internal_edge"]
+
+                # Apply edge styles (explicit styles override internal defaults)
                 if event_name in effective_edge_styles:
                     style_attrs = effective_edge_styles[event_name]
                     if "color" in style_attrs:
@@ -167,14 +201,42 @@ class StateMachineVisualization(BaseVisualization):
                         edge_attrs["style"] = style_attrs["style"]
                     if "penwidth" in style_attrs:
                         edge_attrs["penwidth"] = style_attrs["penwidth"]
-                elif event_name in state_machine_class._all_event_names:
+                elif (
+                    not t.internal
+                    and event_name in state_machine_class._all_event_names
+                ):
                     edge_attrs["color"] = self._COLORS["edge_event"]
                     edge_attrs["style"] = "solid"
+
+                # Build edge label
+                label = event_name
+
+                # Append guard conditions
+                if show_guards:
+                    guard_parts: list[str] = []
+                    if t.cond:
+                        guard_parts.extend(t.cond)
+                    if t.unless:
+                        guard_parts.extend(f"!{u}" for u in t.unless)
+                    if guard_parts:
+                        label += f" [{', '.join(guard_parts)}]"
+
+                # Append hook annotations
+                if show_hooks:
+                    hook_names: list[str] = []
+                    if event_name in before_event_hooks:
+                        hook_names.append(before_event_hooks[event_name])
+                    if event_name in event_hooks:
+                        hook_names.append(event_hooks[event_name])
+                    if event_name in after_event_hooks:
+                        hook_names.append(after_event_hooks[event_name])
+                    if hook_names:
+                        label += "\\n" + "\\n".join(hook_names)
 
                 edge = pydot.Edge(
                     source_id,
                     target_id,
-                    label=event_name,
+                    label=label,
                     **edge_attrs,
                 )
                 dot_graph.add_edge(edge)

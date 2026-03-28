@@ -169,6 +169,8 @@ class Agent:
         include_components: bool = True,
         show_current_state: bool = True,
         edge_style_map: dict[str, dict[str, str]] | None = None,
+        show_guards: bool = True,
+        show_hooks: bool = True,
         **kwargs: Any,
     ) -> "pydot.Dot":
         """Create a comprehensive visualization of the agent.
@@ -185,6 +187,11 @@ class Agent:
             edge_style_map: Custom edge styling for state machine transitions.
                 Maps transition event names to style dicts with keys like
                 "color", "style", "penwidth".
+            show_guards: Whether to show guard conditions (cond/unless) on
+                state machine transition edges. Defaults to True.
+            show_hooks: Whether to show hook methods (on_enter_*, on_exit_*,
+                before_*, on_*, after_*) on states and transitions.
+                Defaults to False.
             **kwargs: Additional arguments passed to visualization components
 
         Returns:
@@ -202,6 +209,8 @@ class Agent:
             include_components=include_components,
             show_current_state=show_current_state,
             edge_style_map=edge_style_map,
+            show_guards=show_guards,
+            show_hooks=show_hooks,
             **kwargs,
         )
 

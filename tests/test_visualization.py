@@ -378,7 +378,7 @@ class TestCustomEdgeStyling:
         start_edges = [
             e
             for e in graph.get_edge_list()
-            if e.get_label() and e.get_label().strip('"') == "start"
+            if e.get_label() and e.get_label().strip('"').startswith("start")
         ]
         assert len(start_edges) > 0
         for edge in start_edges:
@@ -388,3 +388,360 @@ class TestCustomEdgeStyling:
         """The DEFAULT_EDGE_STYLE_MAP class attribute is accessible."""
         assert "start" in StateMachineVisualization.DEFAULT_EDGE_STYLE_MAP
         assert "stop" in StateMachineVisualization.DEFAULT_EDGE_STYLE_MAP
+
+
+# === 4. Guard Conditions on Transition Edges ===
+
+
+class GuardedStateMachine(AgentStateMachine):
+    starting = State("Starting", initial=True)
+    idle = State("Idle")
+    processing = State("Processing")
+    end = State("End", final=True)
+
+    start = starting.to(idle)
+    process = idle.to(processing, cond="is_ready")
+    finish = processing.to(idle, unless="has_pending")
+    stop = starting.to(end) | idle.to(end) | processing.to(end)
+
+    def __init__(self, agent: Agent) -> None:
+        super().__init__(agent)
+
+    def is_ready(self) -> bool:
+        return True
+
+    def has_pending(self) -> bool:
+        return False
+
+    def after_transition(self, event: str, state: State) -> None:
+        pass
+
+
+class GuardedAgent(Agent):
+    definition = AgentDefinition(
+        configuration_class=AgentConfiguration,
+        events_publishing_class=VizPublishing,
+        events_listening_class=VizListening,
+        state_machine_class=GuardedStateMachine,
+        status_class=AgentStatus,
+    )
+
+
+@pytest.fixture
+def guarded_agent() -> Generator[GuardedAgent]:
+    agent = GuardedAgent({})
+    yield agent
+    try:
+        agent.teardown()
+    except Exception:
+        pass
+
+
+class TestGuardConditions:
+    def test_cond_guard_shown_by_default(self, guarded_agent: GuardedAgent) -> None:
+        """Guard conditions (cond) appear in edge labels by default."""
+        viz = StateMachineVisualization()
+        graph = viz.create_visualization(guarded_agent.machine)
+
+        process_edges = [
+            e
+            for e in graph.get_edge_list()
+            if e.get_label() and "process" in e.get_label().strip('"')
+        ]
+        assert len(process_edges) > 0
+        label = process_edges[0].get_label().strip('"')
+        assert "[is_ready]" in label
+
+    def test_unless_guard_shown(self, guarded_agent: GuardedAgent) -> None:
+        """Unless guards appear with ! prefix in edge labels."""
+        viz = StateMachineVisualization()
+        graph = viz.create_visualization(guarded_agent.machine)
+
+        finish_edges = [
+            e
+            for e in graph.get_edge_list()
+            if e.get_label() and "finish" in e.get_label().strip('"')
+        ]
+        assert len(finish_edges) > 0
+        label = finish_edges[0].get_label().strip('"')
+        assert "[!has_pending]" in label
+
+    def test_guards_hidden_when_disabled(self, guarded_agent: GuardedAgent) -> None:
+        """Guards are not shown when show_guards=False."""
+        viz = StateMachineVisualization()
+        graph = viz.create_visualization(guarded_agent.machine, show_guards=False)
+
+        for edge in graph.get_edge_list():
+            label = edge.get_label()
+            if label:
+                assert "[" not in label.strip('"')
+
+    def test_no_guards_on_plain_transitions(self, plain_agent: PlainAgent) -> None:
+        """Transitions without guards don't get bracket annotations."""
+        viz = StateMachineVisualization()
+        graph = viz.create_visualization(plain_agent.machine)
+
+        for edge in graph.get_edge_list():
+            label = edge.get_label()
+            if label:
+                assert "[" not in label.strip('"')
+
+    def test_guards_pass_through_agent_visualize(
+        self, guarded_agent: GuardedAgent
+    ) -> None:
+        """show_guards passes through Agent.visualize()."""
+        graph = guarded_agent.visualize(show_guards=False)
+        for edge in graph.get_edge_list():
+            label = edge.get_label()
+            if label:
+                assert "[" not in label.strip('"')
+
+
+# === 5. Internal Transition Styling ===
+
+
+class InternalStateMachine(AgentStateMachine):
+    starting = State("Starting", initial=True)
+    idle = State("Idle")
+    end = State("End", final=True)
+
+    start = starting.to(idle)
+    tick = idle.to.itself(internal=True)
+    stop = starting.to(end) | idle.to(end)
+
+    def __init__(self, agent: Agent) -> None:
+        super().__init__(agent)
+
+    def after_transition(self, event: str, state: State) -> None:
+        pass
+
+
+class InternalAgent(Agent):
+    definition = AgentDefinition(
+        configuration_class=AgentConfiguration,
+        events_publishing_class=VizPublishing,
+        events_listening_class=VizListening,
+        state_machine_class=InternalStateMachine,
+        status_class=AgentStatus,
+    )
+
+
+@pytest.fixture
+def internal_agent() -> Generator[InternalAgent]:
+    agent = InternalAgent({})
+    yield agent
+    try:
+        agent.teardown()
+    except Exception:
+        pass
+
+
+class TestInternalTransitionStyling:
+    def test_internal_transition_dotted(self, internal_agent: InternalAgent) -> None:
+        """Internal transitions are styled with dotted lines."""
+        viz = StateMachineVisualization()
+        graph = viz.create_visualization(internal_agent.machine)
+
+        tick_edges = [
+            e
+            for e in graph.get_edge_list()
+            if e.get_label() and "tick" in e.get_label().strip('"')
+        ]
+        assert len(tick_edges) > 0
+        attrs = tick_edges[0].obj_dict["attributes"]
+        assert attrs["style"] == "dotted"
+
+    def test_internal_transition_muted_color(
+        self, internal_agent: InternalAgent
+    ) -> None:
+        """Internal transitions use the muted gray color."""
+        viz = StateMachineVisualization()
+        graph = viz.create_visualization(internal_agent.machine)
+
+        tick_edges = [
+            e
+            for e in graph.get_edge_list()
+            if e.get_label() and "tick" in e.get_label().strip('"')
+        ]
+        assert len(tick_edges) > 0
+        attrs = tick_edges[0].obj_dict["attributes"]
+        assert attrs["color"] == StateMachineVisualization._COLORS["internal_edge"]
+
+    def test_internal_transition_self_loop(self, internal_agent: InternalAgent) -> None:
+        """Internal transitions point back to the same state."""
+        viz = StateMachineVisualization()
+        graph = viz.create_visualization(internal_agent.machine)
+
+        tick_edges = [
+            e
+            for e in graph.get_edge_list()
+            if e.get_label() and "tick" in e.get_label().strip('"')
+        ]
+        assert len(tick_edges) > 0
+        edge = tick_edges[0]
+        assert edge.get_source().strip('"') == edge.get_destination().strip('"')
+
+    def test_explicit_style_overrides_internal(
+        self, internal_agent: InternalAgent
+    ) -> None:
+        """An explicit edge_style_map entry overrides internal defaults."""
+        custom_map = {"tick": {"color": "purple", "style": "bold"}}
+        viz = StateMachineVisualization()
+        graph = viz.create_visualization(
+            internal_agent.machine, edge_style_map=custom_map
+        )
+
+        tick_edges = [
+            e
+            for e in graph.get_edge_list()
+            if e.get_label() and "tick" in e.get_label().strip('"')
+        ]
+        assert len(tick_edges) > 0
+        attrs = tick_edges[0].obj_dict["attributes"]
+        assert attrs["color"] == "purple"
+        assert attrs["style"] == "bold"
+
+
+# === 6. FSM Hook Annotations ===
+
+
+class HookedStateMachine(AgentStateMachine):
+    starting = State("Starting", initial=True)
+    idle = State("Idle")
+    end = State("End", final=True)
+
+    start = starting.to(idle)
+    stop = starting.to(end) | idle.to(end)
+
+    def __init__(self, agent: Agent) -> None:
+        super().__init__(agent)
+
+    def on_enter_idle(self) -> None:
+        pass
+
+    def on_exit_idle(self) -> None:
+        pass
+
+    def before_start(self) -> None:
+        pass
+
+    def on_start(self) -> None:
+        pass
+
+    def after_start(self) -> None:
+        pass
+
+    def after_transition(self, event: str, state: State) -> None:
+        pass
+
+
+class HookedAgent(Agent):
+    definition = AgentDefinition(
+        configuration_class=AgentConfiguration,
+        events_publishing_class=VizPublishing,
+        events_listening_class=VizListening,
+        state_machine_class=HookedStateMachine,
+        status_class=AgentStatus,
+    )
+
+
+@pytest.fixture
+def hooked_agent() -> Generator[HookedAgent]:
+    agent = HookedAgent({})
+    yield agent
+    try:
+        agent.teardown()
+    except Exception:
+        pass
+
+
+class TestHookAnnotations:
+    def test_hooks_shown_by_default(self, hooked_agent: HookedAgent) -> None:
+        """Hooks are shown by default (show_hooks=True)."""
+        viz = StateMachineVisualization()
+        graph = viz.create_visualization(hooked_agent.machine)
+
+        idle_nodes = [
+            n for n in graph.get_node_list() if n.get_name().strip('"') == "idle"
+        ]
+        assert len(idle_nodes) == 1
+        label = idle_nodes[0].get_label().strip('"')
+        assert "on_enter_idle" in label
+
+    def test_hooks_hidden_when_disabled(self, hooked_agent: HookedAgent) -> None:
+        """Hooks are not shown when show_hooks=False."""
+        viz = StateMachineVisualization()
+        graph = viz.create_visualization(hooked_agent.machine, show_hooks=False)
+
+        # State labels should be plain names
+        for node in graph.get_node_list():
+            label = node.get_label()
+            if label:
+                label = label.strip('"')
+                assert "on_enter" not in label
+                assert "on_exit" not in label
+
+        # Edge labels should be plain event names
+        for edge in graph.get_edge_list():
+            label = edge.get_label()
+            if label:
+                label = label.strip('"')
+                assert "before_" not in label
+                assert "after_" not in label
+
+    def test_state_hooks_shown(self, hooked_agent: HookedAgent) -> None:
+        """State entry/exit hooks appear in state node labels when show_hooks=True."""
+        viz = StateMachineVisualization()
+        graph = viz.create_visualization(hooked_agent.machine, show_hooks=True)
+
+        idle_nodes = [
+            n for n in graph.get_node_list() if n.get_name().strip('"') == "idle"
+        ]
+        assert len(idle_nodes) == 1
+        label = idle_nodes[0].get_label().strip('"')
+        assert "on_enter_idle" in label
+        assert "on_exit_idle" in label
+
+    def test_event_hooks_on_edges(self, hooked_agent: HookedAgent) -> None:
+        """Event hooks (before_*, on_*, after_*) appear on transition edges."""
+        viz = StateMachineVisualization()
+        graph = viz.create_visualization(hooked_agent.machine, show_hooks=True)
+
+        start_edges = [
+            e
+            for e in graph.get_edge_list()
+            if e.get_label()
+            and "start" in e.get_label().strip('"')
+            and "before_start" in e.get_label().strip('"')
+        ]
+        assert len(start_edges) > 0
+        label = start_edges[0].get_label().strip('"')
+        assert "before_start" in label
+        assert "on_start" in label
+        assert "after_start" in label
+
+    def test_states_without_hooks_plain_label(self, hooked_agent: HookedAgent) -> None:
+        """States without hooks keep a plain label even with show_hooks=True."""
+        viz = StateMachineVisualization()
+        graph = viz.create_visualization(hooked_agent.machine, show_hooks=True)
+
+        starting_nodes = [
+            n for n in graph.get_node_list() if n.get_name().strip('"') == "starting"
+        ]
+        assert len(starting_nodes) == 1
+        label = starting_nodes[0].get_label().strip('"')
+        # No record syntax — just the plain name
+        assert "{" not in label
+
+    def test_show_hooks_passes_through_agent_visualize(
+        self, hooked_agent: HookedAgent
+    ) -> None:
+        """show_hooks passes through Agent.visualize()."""
+        graph = hooked_agent.visualize(show_hooks=True)
+
+        idle_nodes = [
+            n for n in graph.get_node_list() if n.get_name().strip('"') == "idle"
+        ]
+        assert len(idle_nodes) == 1
+        label = idle_nodes[0].get_label().strip('"')
+        assert "on_enter_idle" in label
