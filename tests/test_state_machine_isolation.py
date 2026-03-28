@@ -8,7 +8,6 @@ types.
 from typing import Any
 
 import pytest
-from statemachine import State
 
 from agentspype.agent.agent import Agent
 from agentspype.agent.configuration import AgentConfiguration
@@ -17,6 +16,7 @@ from agentspype.agent.listening import AgentListening
 from agentspype.agent.publishing import StateAgentPublishing
 from agentspype.agent.state_machine import AgentStateMachine, BasicAgentStateMachine
 from agentspype.agent.status import AgentStatus
+from agentspype.fsm import State
 
 # ---------------------------------------------------------------------------
 # Shared test infrastructure

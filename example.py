@@ -2,8 +2,6 @@
 
 from typing import Any
 
-from statemachine import State
-
 from agentspype.agent.agent import Agent
 from agentspype.agent.configuration import AgentConfiguration
 from agentspype.agent.definition import AgentDefinition
@@ -11,6 +9,7 @@ from agentspype.agent.listening import AgentListening
 from agentspype.agent.publishing import StateAgentPublishing
 from agentspype.agent.state_machine import AgentStateMachine
 from agentspype.agent.status import AgentStatus
+from agentspype.fsm import State
 
 
 # Example State Machine

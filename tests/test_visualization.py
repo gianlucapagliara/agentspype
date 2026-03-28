@@ -4,7 +4,6 @@ from collections.abc import Generator
 from typing import Any
 
 import pytest
-from statemachine import State
 
 from agentspype.agent.agent import Agent
 from agentspype.agent.configuration import AgentConfiguration
@@ -13,6 +12,7 @@ from agentspype.agent.listening import AgentListening
 from agentspype.agent.publishing import StateAgentPublishing
 from agentspype.agent.state_machine import AgentStateMachine
 from agentspype.agent.status import AgentStatus
+from agentspype.fsm import State
 from agentspype.visualization.agent_visualization import AgentVisualization
 from agentspype.visualization.listening_visualization import ListeningVisualization
 from agentspype.visualization.state_machine_visualization import (

@@ -9,8 +9,6 @@ import pytest
 
 processpype = pytest.importorskip("processpype")
 
-from statemachine import State
-
 from agentspype.agency import Agency
 from agentspype.agent.agent import Agent
 from agentspype.agent.configuration import AgentConfiguration
@@ -19,6 +17,7 @@ from agentspype.agent.listening import AgentListening
 from agentspype.agent.publishing import StateAgentPublishing
 from agentspype.agent.state_machine import AgentStateMachine
 from agentspype.agent.status import AgentStatus
+from agentspype.fsm import State
 from agentspype.runner.runner import AgentRunner
 from agentspype.runner.runtime import set_runtime
 from agentspype.service.configuration import AgentRunnerServiceConfiguration

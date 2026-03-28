@@ -14,8 +14,6 @@ patterns found in downstream projects (e.g. bl_agents):
 
 from typing import Any
 
-from statemachine import State
-
 from agentspype.agent.agent import Agent
 from agentspype.agent.configuration import AgentConfiguration
 from agentspype.agent.definition import AgentDefinition
@@ -23,6 +21,7 @@ from agentspype.agent.listening import AgentListening
 from agentspype.agent.publishing import StateAgentPublishing
 from agentspype.agent.state_machine import AgentStateMachine, BasicAgentStateMachine
 from agentspype.agent.status import AgentStatus
+from agentspype.fsm import State
 
 # ---------------------------------------------------------------------------
 # Shared test infrastructure
@@ -585,7 +584,7 @@ class TestTransitionListsStorage:
         assert "start" in tls
 
     def test_transition_lists_values_are_transition_lists(self) -> None:
-        from statemachine.transition_list import TransitionList
+        from agentspype.fsm import TransitionList
 
         for name, tl in ChildSM._transition_lists_.items():
             assert isinstance(tl, TransitionList), (

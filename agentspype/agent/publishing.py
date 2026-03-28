@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING, Any
 
 from eventspype.pub.multipublisher import MultiPublisher
 from eventspype.pub.publication import EventPublication
-from statemachine import State
+
+from agentspype.fsm import State
 
 if TYPE_CHECKING:
     from agentspype.agent.agent import Agent

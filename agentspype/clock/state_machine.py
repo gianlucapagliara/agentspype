@@ -9,10 +9,8 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import TYPE_CHECKING, ClassVar
 
-from statemachine import State
-from statemachine.transition_list import TransitionList
-
 from agentspype.agent.state_machine import AgentStateMachine, BasicAgentStateMachine
+from agentspype.fsm import State, TransitionList
 
 if TYPE_CHECKING:
     from agentspype.clock.agent import ClockAgent

@@ -1,9 +1,8 @@
 from typing import TYPE_CHECKING
 
-from statemachine import State
-
 from agentspype.agent.publishing import StateAgentPublishing
 from agentspype.agent.state_machine import AgentStateMachine
+from agentspype.fsm import State
 
 if TYPE_CHECKING:
     from agentspype.template.agent import TemplateAgent

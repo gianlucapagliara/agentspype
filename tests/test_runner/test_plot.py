@@ -9,7 +9,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from statemachine import State
 
 from agentspype.agency import Agency
 from agentspype.agent.agent import Agent
@@ -18,6 +17,7 @@ from agentspype.agent.definition import AgentDefinition
 from agentspype.agent.listening import AgentListening
 from agentspype.agent.publishing import StateAgentPublishing
 from agentspype.agent.state_machine import AgentStateMachine
+from agentspype.fsm import State
 from agentspype.runner.plot import plot_agents
 
 # ---------------------------------------------------------------------------
