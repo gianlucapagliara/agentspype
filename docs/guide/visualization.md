@@ -38,7 +38,7 @@ Returns a `pydot.Dot` object. If `save_file=True`, saves `<output_dir>/<filename
 
 ### `agent.visualize_state_machine()`
 
-Creates a diagram of the state machine only, using python-statemachine's built-in `DotGraphMachine` with custom AgentsPype styling applied on top.
+Creates a diagram of the state machine only, using pydot with custom AgentsPype styling.
 
 ```python
 graph = agent.visualize_state_machine(
@@ -110,7 +110,7 @@ All subclasses must implement the abstract `create_visualization(target, graph, 
 
 ### `StateMachineVisualization`
 
-Wraps python-statemachine's `DotGraphMachine` and applies custom AgentsPype styling. The `visualize_with_current_state(state_machine)` method highlights the currently active state.
+Renders state machines using pydot and applies custom AgentsPype styling. The `visualize_with_current_state(state_machine)` method highlights the currently active state.
 
 ### `PublishingVisualization`
 

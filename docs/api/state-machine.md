@@ -4,11 +4,11 @@
 
 ## `AgentStateMachine`
 
-Base class for all agent state machines. Extends `statemachine.StateMachine` with agent integration: a `weakref` back to the owning agent, automatic subscription on start, automatic teardown on entering a final state, and default state/transition injection via `AgentStateMachineMeta`.
+Base class for all agent state machines. Extends `agentspype.fsm.StateMachine` with agent integration: a `weakref` back to the owning agent, automatic subscription on start, automatic teardown on entering a final state, and default state/transition injection via `StateMachineMeta`.
 
 ### Class Variables
 
-The following class variables are injected by `AgentStateMachineMeta` into every concrete subclass that does not define them:
+The following class variables are injected by `StateMachineMeta` into every concrete subclass that does not define them:
 
 | Name | Type | Description |
 |---|---|---|
@@ -36,7 +36,7 @@ Resolves the weakref. Raises `RuntimeError("Agent has been deactivated")` if the
 
 #### `on_enter_end() -> None`
 
-Called automatically by python-statemachine when the machine enters any state named `end` (or any `final=True` state). Calls `self.agent.teardown()`.
+Called automatically when the machine enters the `end` state. Calls `self.agent.teardown()`.
 
 #### `before_transition(event, state, source, target) -> None`
 
@@ -89,11 +89,11 @@ agent.machine.safe_stop()  # safe to call multiple times
 
 ---
 
-## `AgentStateMachineMeta`
+## `StateMachineMeta`
 
-**Module:** `agentspype.agent.state_machine`
+**Module:** `agentspype.fsm.machine`
 
-Metaclass for `AgentStateMachine`. Extends `statemachine.factory.StateMachineMetaclass`.
+Metaclass for `StateMachine`. Handles state collection, transition mapping, hook resolution, and state isolation across inheritance hierarchies.
 
 ### Behavior
 

@@ -22,7 +22,7 @@ uv sync --all-groups
 
 This installs:
 
-- **Runtime dependencies:** pydantic, python-statemachine, pydot, bidict, eventspype
+- **Runtime dependencies:** pydantic, pydot, bidict, eventspype
 - **Dev dependencies:** pytest, pytest-cov, pytest-asyncio, pytest-timeout, mypy, ruff, pre-commit
 - **Docs dependencies:** mkdocs
 
@@ -136,7 +136,7 @@ from agentspype.agent.listening import AgentListening
 from agentspype.agent.publishing import StateAgentPublishing
 from agentspype.agent.state_machine import AgentStateMachine
 from agentspype.agent.status import AgentStatus
-from statemachine import State
+from agentspype.fsm import State
 
 
 class TestStateMachine(AgentStateMachine):

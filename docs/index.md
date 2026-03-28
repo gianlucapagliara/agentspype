@@ -6,14 +6,14 @@
 
 AgentsPype combines two complementary concepts:
 
-- **Finite State Machines (FSMs)** — Each agent has an embedded state machine that governs its lifecycle and behavior. States and transitions are declared declaratively using [python-statemachine](https://python-statemachine.readthedocs.io/).
+- **Finite State Machines (FSMs)** — Each agent has an embedded state machine that governs its lifecycle and behavior. States and transitions are declared declaratively using the built-in `agentspype.fsm` engine.
 - **Event-driven communication** — Agents subscribe to and publish typed events through [eventspype](https://github.com/gianlucapagliara/eventspype), a pub/sub library. Agents are decoupled: publishers and subscribers never reference each other directly.
 
 The combination makes it easy to build systems where agents respond to external signals, change their internal state accordingly, and notify the rest of the system about what happened.
 
 ## Key Features
 
-- **Declarative state machines** — Define states and transitions as class attributes. The `AgentStateMachineMeta` metaclass injects sensible defaults (`starting`, `idle`, `end`) so every agent has a consistent lifecycle out of the box.
+- **Declarative state machines** — Define states and transitions as class attributes. The `StateMachineMeta` metaclass injects sensible defaults (`starting`, `idle`, `end`) so every agent has a consistent lifecycle out of the box.
 - **Typed event pub/sub** — `AgentListening` and `AgentPublishing` wrap eventspype's `MultiSubscriber` and `MultiPublisher`. Events carry structured data classes and are identified by enum tags for type safety.
 - **State transition events** — `StateAgentPublishing` publishes a `StateMachineEvent` whenever the state machine transitions, allowing other agents to react to state changes without polling.
 - **Central registry** — `Agency` is a class-level registry that tracks all live agents and provides a factory method to instantiate agents from their configuration objects.
@@ -40,7 +40,7 @@ uv add agentspype
 ## Minimal Example
 
 ```python
-from statemachine import State
+from agentspype.fsm import State
 from agentspype.agent.agent import Agent
 from agentspype.agent.configuration import AgentConfiguration
 from agentspype.agent.definition import AgentDefinition

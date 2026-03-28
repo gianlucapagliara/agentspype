@@ -72,7 +72,7 @@ graph = viz.visualize(target, save_file=True, filename="output", output_dir=".di
 
 **Module:** `agentspype.visualization.state_machine_visualization`
 
-Visualizes an `AgentStateMachine` instance using python-statemachine's built-in `DotGraphMachine`, then applies AgentsPype's custom styling.
+Visualizes an `AgentStateMachine` instance using pydot with custom AgentsPype styling.
 
 ### Methods
 

@@ -81,7 +81,7 @@ agent.stop()
   - `AgentConfiguration`: Pydantic model for agent settings
   - `AgentStatus`: Runtime status model
 
-- **State Machine**: Finite state machine framework built on python-statemachine
+- **State Machine**: Custom lightweight finite state machine engine
   - `AgentStateMachine`: Base class with auto-created `starting`, `idle`, `end` states
   - `BasicAgentStateMachine`: Ready-to-use default implementation
 

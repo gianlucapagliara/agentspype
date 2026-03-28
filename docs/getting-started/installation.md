@@ -32,7 +32,7 @@ AgentsPype depends on the following packages, which are installed automatically:
 | Package | Version | Purpose |
 |---|---|---|
 | `pydantic` | >=2.10.4, <3 | Configuration and status models |
-| `python-statemachine` | >=2.4.0, <3 | Finite state machine base |
+| `agentspype.fsm` | built-in | Custom finite state machine engine |
 | `pydot` | >=3.0.3, <4 | Visualization (graph generation) |
 | `bidict` | >=0.23.1, <1 | Bidirectional mapping in Agency |
 | `eventspype` | >=1.2.0, <2 | Event pub/sub |

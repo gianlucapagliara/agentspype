@@ -53,7 +53,7 @@ class WorkerStateMachine(AgentStateMachine):
 !!! note
     If you define `starting`, `idle`, or `end` yourself, the metaclass will not overwrite them. If you omit any of them, the metaclass fills in sensible defaults.
 
-## The `AgentStateMachineMeta` Metaclass
+## The `StateMachineMeta` Metaclass
 
 `StateMachineMeta` injects default `starting`, `idle`, `end` states and `start`, `stop` transitions into any `StateMachine` subclass that does not define them. It also clones inherited states to ensure full isolation between parent and child classes.
 

@@ -33,7 +33,7 @@ class WorkerStatus(AgentStatus):
 Subclass `AgentStateMachine` and declare states and transitions as class attributes.
 
 ```python
-from statemachine import State
+from agentspype.fsm import State
 from agentspype.agent.state_machine import AgentStateMachine
 from agentspype.agent.publishing import StateAgentPublishing
 
@@ -177,7 +177,7 @@ Diagrams are saved as PNG files in the `output_dir` directory.
 ## Putting It All Together
 
 ```python
-from statemachine import State
+from agentspype.fsm import State
 from dataclasses import dataclass
 from enum import Enum
 

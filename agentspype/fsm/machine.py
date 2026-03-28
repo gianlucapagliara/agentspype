@@ -398,8 +398,8 @@ class _StatesMapDescriptor:
 class StateMachine(metaclass=StateMachineMeta):
     """Lightweight FSM base class.
 
-    Provides the same API as ``python-statemachine.StateMachine`` for the
-    subset of features used by agentspype.
+    Provides a declarative FSM with convention-based hooks, guard conditions,
+    and full inheritance isolation.
     """
 
     # Class-level attributes set by metaclass

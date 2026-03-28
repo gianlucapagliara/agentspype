@@ -80,7 +80,7 @@ class _TransitionBuilder:
 class State:
     """Immutable state definition with transition-building API.
 
-    Mirrors the ``python-statemachine`` ``State`` class API.
+    Lightweight state definition with transition-building API.
     """
 
     def __init__(

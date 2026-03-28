@@ -1,6 +1,6 @@
 """Tests for state machine inheritance isolation.
 
-Verifies that the AgentStateMachineMeta metaclass properly isolates State objects
+Verifies that the StateMachineMeta metaclass properly isolates State objects
 across subclasses, preventing shared-state pollution between different state machine
 types.
 """
@@ -293,10 +293,7 @@ class TestDiamondInheritance:
                     pass
 
         except Exception as exc:
-            pytest.skip(
-                f"Diamond inheritance is not supported by python-statemachine "
-                f"(known limitation): {exc}"
-            )
+            pytest.skip(f"Diamond inheritance failed (known limitation): {exc}")
             return
 
         diamond_state_ids = {s.id for s in Diamond.states}
