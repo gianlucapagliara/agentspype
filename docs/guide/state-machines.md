@@ -1,6 +1,6 @@
 # State Machines
 
-AgentsPype uses [python-statemachine](https://python-statemachine.readthedocs.io/) as its FSM engine. `AgentStateMachine` extends `StateMachine` with agent-specific hooks and a metaclass that injects default states and transitions into every subclass.
+AgentsPype uses a custom lightweight FSM engine (`agentspype.fsm`). `AgentStateMachine` extends `StateMachine` with agent-specific hooks and a metaclass that injects default states and transitions into every subclass.
 
 ## Default Structure
 
@@ -21,7 +21,7 @@ The `on_enter_end` hook on `AgentStateMachine` calls `agent.teardown()` automati
 States and transitions are class attributes. You can declare all of them yourself, mix in the defaults, or rely entirely on the defaults.
 
 ```python
-from statemachine import State
+from agentspype.fsm import State
 from agentspype.agent.state_machine import AgentStateMachine
 
 
@@ -55,7 +55,7 @@ class WorkerStateMachine(AgentStateMachine):
 
 ## The `AgentStateMachineMeta` Metaclass
 
-`AgentStateMachineMeta` extends `StateMachineMetaclass` (from python-statemachine) with one responsibility: inject default `starting`, `idle`, `end` states and `start`, `stop` transitions into any subclass that does not define them.
+`StateMachineMeta` injects default `starting`, `idle`, `end` states and `start`, `stop` transitions into any `StateMachine` subclass that does not define them. It also clones inherited states to ensure full isolation between parent and child classes.
 
 This happens at **class creation time**, before any instance is created. The base class `AgentStateMachine` itself is excluded from this injection.
 
@@ -72,7 +72,7 @@ print([s.id for s in MinimalMachine.states])
 
 ## Required Hook: `after_transition`
 
-`after_transition` is declared `@abstractmethod` in `AgentStateMachine`. Every concrete subclass **must** implement it. It is called by python-statemachine after every successful transition.
+`after_transition` is declared `@abstractmethod` in `AgentStateMachine`. Every concrete subclass **must** implement it. It is called after every successful transition.
 
 The most common implementation publishes the transition event:
 
@@ -102,7 +102,28 @@ Called when the `stop` transition fires. Sets the internal `_should_stop` flag t
 
 ### `on_enter_end()`
 
-Called when entering any state named `end` (or any `final=True` state via python-statemachine's naming). Calls `self.agent.teardown()`.
+Called when entering the `end` state. Calls `self.agent.teardown()`.
+
+## Supported Convention Hooks
+
+The FSM resolves hook methods by naming convention:
+
+- **`on_enter_<state_id>()`** — called when entering a state
+- **`on_exit_<state_id>()`** — called when exiting a state
+- **`on_<event_name>(**kwargs)`** — called when an event fires (receives kwargs passed to `send()`)
+- **`before_transition(event, state, source, target)`** — global hook called before every transition
+- **`after_transition(event, state)`** — global hook called after every transition
+
+The full hook execution order for each transition is:
+
+1. `before_transition(event, state, source, target)` — global
+2. `before_<event>(**kwargs)` — per-event
+3. `on_<event>(**kwargs)` — per-event
+4. `on_exit_<state_id>()` — if not internal transition
+5. *[state change]* — if not internal transition
+6. `on_enter_<state_id>()` — if not internal transition
+7. `after_<event>(**kwargs)` — per-event
+8. `after_transition(event, state)` — global
 
 ## Safe Start and Stop
 

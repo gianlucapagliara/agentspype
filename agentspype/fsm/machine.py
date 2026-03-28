@@ -108,11 +108,23 @@ def _build_hook_tables(
     all_event_names: set[str],
     bases: tuple[type, ...],
     namespace: dict[str, Any],
-) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
-    """Resolve hook methods by convention (on_enter_*, on_exit_*, on_*)."""
+) -> tuple[
+    dict[str, str],
+    dict[str, str],
+    dict[str, str],
+    dict[str, str],
+    dict[str, str],
+]:
+    """Resolve hook methods by convention.
+
+    Resolves: on_enter_*, on_exit_*, before_*, on_*, after_*.
+    Returns: (enter_hooks, exit_hooks, event_hooks, before_event_hooks, after_event_hooks)
+    """
     enter_hooks: dict[str, str] = {}
     exit_hooks: dict[str, str] = {}
     event_hooks: dict[str, str] = {}
+    before_event_hooks: dict[str, str] = {}
+    after_event_hooks: dict[str, str] = {}
 
     # Collect method names from MRO + current namespace
     all_method_names: set[str] = set()
@@ -137,8 +149,14 @@ def _build_hook_tables(
         hook_name = f"on_{event_name}"
         if hook_name in all_method_names or hook_name in namespace:
             event_hooks[event_name] = hook_name
+        hook_name = f"before_{event_name}"
+        if hook_name in all_method_names or hook_name in namespace:
+            before_event_hooks[event_name] = hook_name
+        hook_name = f"after_{event_name}"
+        if hook_name in all_method_names or hook_name in namespace:
+            after_event_hooks[event_name] = hook_name
 
-    return enter_hooks, exit_hooks, event_hooks
+    return enter_hooks, exit_hooks, event_hooks, before_event_hooks, after_event_hooks
 
 
 class _EventDescriptor:
@@ -287,6 +305,16 @@ class StateMachineMeta(type):
 
         # Phase 2: Collect and index
         all_states = _collect_states_from_namespace(namespace)
+
+        # Validate exactly one initial state
+        initial_states = [s for s in all_states if s.initial]
+        if len(initial_states) > 1:
+            names = ", ".join(f"{s.id!r}" for s in initial_states)
+            raise ValueError(
+                f"{name}: Multiple initial states defined: {names}. "
+                f"Exactly one initial state is required."
+            )
+
         all_transition_lists, all_event_names = _collect_transitions_from_namespace(
             namespace
         )
@@ -306,8 +334,8 @@ class StateMachineMeta(type):
             )
 
         # Phase 3: Hooks, metadata, descriptors
-        enter_hooks, exit_hooks, event_hooks = _build_hook_tables(
-            all_states, all_event_names, bases, namespace
+        enter_hooks, exit_hooks, event_hooks, before_event_hooks, after_event_hooks = (
+            _build_hook_tables(all_states, all_event_names, bases, namespace)
         )
         namespace.update(
             _states=all_states,
@@ -316,6 +344,8 @@ class StateMachineMeta(type):
             _enter_hooks=enter_hooks,
             _exit_hooks=exit_hooks,
             _event_hooks=event_hooks,
+            _before_event_hooks=before_event_hooks,
+            _after_event_hooks=after_event_hooks,
             _all_event_names=all_event_names,
             _events_list=[_Event(n) for n in sorted(all_event_names)],
             _states_map={s.id: s for s in all_states},
@@ -379,6 +409,8 @@ class StateMachine(metaclass=StateMachineMeta):
     _enter_hooks: dict[str, str]
     _exit_hooks: dict[str, str]
     _event_hooks: dict[str, str]
+    _before_event_hooks: dict[str, str]
+    _after_event_hooks: dict[str, str]
     _all_event_names: set[str]
     _events_list: list[_Event]
     _states_map: dict[str, State]
@@ -410,11 +442,26 @@ class StateMachine(metaclass=StateMachineMeta):
     def _execute_transition(
         self, event: str, transition: Transition, **kwargs: Any
     ) -> None:
-        """Execute a single transition: fire hooks and update state."""
+        """Execute a single transition: fire hooks and update state.
+
+        Hook execution order:
+        1. before_transition (global)
+        2. before_<event> (per-event)
+        3. on_<event> (per-event, receives **kwargs)
+        4. on_exit_<state> (if not internal)
+        5. [state change] (if not internal)
+        6. on_enter_<state> (if not internal)
+        7. after_<event> (per-event)
+        8. after_transition (global)
+        """
         source = self._current_state
         target = transition.target
 
         self.before_transition(event, source.name, source.name, target.name)
+
+        before_hook = self._before_event_hooks.get(event)
+        if before_hook is not None:
+            getattr(self, before_hook)(**kwargs)
 
         hook_name = self._event_hooks.get(event)
         if hook_name is not None:
@@ -431,6 +478,10 @@ class StateMachine(metaclass=StateMachineMeta):
             if enter_hook_name is not None:
                 getattr(self, enter_hook_name)()
 
+        after_hook = self._after_event_hooks.get(event)
+        if after_hook is not None:
+            getattr(self, after_hook)(**kwargs)
+
         self.after_transition(event, self._current_state)
 
     def send(self, event: str, *, f: bool = False, **kwargs: Any) -> Any:
@@ -444,6 +495,9 @@ class StateMachine(metaclass=StateMachineMeta):
         Returns:
             True if a transition was taken, False otherwise.
         """
+        if self._current_state.final:
+            return False
+
         candidates = self._transition_map.get((self._current_state.id, event))
         if not candidates:
             if f:
