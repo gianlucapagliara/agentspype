@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 import pydot
 
 from .base_visualization import BaseVisualization
+from .theme import Theme
 
 if TYPE_CHECKING:
     pass
@@ -14,14 +15,14 @@ class PublishingVisualization(BaseVisualization):
     """Visualization for agent event publishing."""
 
     _COLORS = {
-        "publisher_fill": "#d5e8d4",  # soft green (source)
-        "publisher_border": "#82b366",
-        "event_fill": "#dae8fc",  # soft blue (data)
-        "event_border": "#6c8ebf",
-        "empty_fill": "#ecf0f1",  # light gray (placeholder)
-        "empty_border": "#95a5a6",
-        "edge_publish": "#82b366",  # green for publish relationship
-        "edge_label": "#636e72",  # muted gray
+        "publisher_fill": Theme.PUB_PUBLISHER_FILL,
+        "publisher_border": Theme.PUB_PUBLISHER_BORDER,
+        "event_fill": Theme.PUB_EVENT_FILL,
+        "event_border": Theme.PUB_EVENT_BORDER,
+        "empty_fill": Theme.PUB_EMPTY_FILL,
+        "empty_border": Theme.PUB_EMPTY_BORDER,
+        "edge_publish": Theme.PUB_EDGE_PUBLISH,
+        "edge_label": Theme.PUB_EDGE_LABEL,
     }
 
     def create_visualization(

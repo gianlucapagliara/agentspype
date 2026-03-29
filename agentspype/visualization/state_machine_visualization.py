@@ -7,6 +7,7 @@ import pydot
 from agentspype.fsm import State
 
 from .base_visualization import BaseVisualization
+from .theme import Theme
 
 if TYPE_CHECKING:
     from agentspype.agent.state_machine import AgentStateMachine
@@ -17,23 +18,26 @@ class StateMachineVisualization(BaseVisualization):
 
     # Default edge style map for common transitions
     DEFAULT_EDGE_STYLE_MAP: dict[str, dict[str, str]] = {
-        "start": {"color": "#82b366", "style": "dashed"},  # muted green
-        "stop": {"color": "#b85450", "style": "dashed"},  # muted red
+        "start": {
+            "color": Theme.SM_EDGE_START_COLOR,
+            "style": Theme.SM_EDGE_START_STYLE,
+        },
+        "stop": {"color": Theme.SM_EDGE_STOP_COLOR, "style": Theme.SM_EDGE_STOP_STYLE},
     }
 
     # Color palette
     _COLORS = {
-        "initial_fill": "#d5e8d4",  # soft green
-        "initial_border": "#82b366",
-        "normal_fill": "#dae8fc",  # soft blue
-        "normal_border": "#6c8ebf",
-        "final_fill": "#f8cecc",  # soft red
-        "final_border": "#b85450",
-        "highlight_fill": "#fff2cc",  # soft gold
-        "highlight_border": "#d6b656",
-        "edge_default": "#2d3436",
-        "edge_event": "#2d3436",
-        "internal_edge": "#7f8c8d",  # muted gray for internal transitions
+        "initial_fill": Theme.SM_INITIAL_FILL,
+        "initial_border": Theme.SM_INITIAL_BORDER,
+        "normal_fill": Theme.SM_NORMAL_FILL,
+        "normal_border": Theme.SM_NORMAL_BORDER,
+        "final_fill": Theme.SM_FINAL_FILL,
+        "final_border": Theme.SM_FINAL_BORDER,
+        "highlight_fill": Theme.SM_HIGHLIGHT_FILL,
+        "highlight_border": Theme.SM_HIGHLIGHT_BORDER,
+        "edge_default": Theme.SM_EDGE_DEFAULT,
+        "edge_event": Theme.SM_EDGE_EVENT,
+        "internal_edge": Theme.SM_INTERNAL_EDGE,
     }
 
     def create_visualization(  # noqa: C901

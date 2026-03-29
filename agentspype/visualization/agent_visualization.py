@@ -1,16 +1,16 @@
 """Comprehensive agent visualization for agentspype."""
 
 import os
-import shutil
 import tempfile
 from typing import TYPE_CHECKING, Any
 
 import pydot
 
-from .base_visualization import BaseVisualization
+from .base_visualization import BaseVisualization, _check_graphviz
 from .listening_visualization import ListeningVisualization
 from .publishing_visualization import PublishingVisualization
 from .state_machine_visualization import StateMachineVisualization
+from .theme import Theme
 
 if TYPE_CHECKING:
     from agentspype.agent.agent import Agent
@@ -20,17 +20,17 @@ class AgentVisualization(BaseVisualization):
     """Comprehensive visualization for agents including state machine, publishing, and listening."""
 
     _COLORS = {
-        "component_fill": "#fff2cc",  # soft gold
-        "component_border": "#d6b656",
-        "cluster_sm_border": "#b85450",  # soft red
-        "cluster_sm_bg": "#f9f9f9",
-        "cluster_pub_border": "#82b366",  # green
-        "cluster_pub_bg": "#f9f9f9",
-        "cluster_listen_border": "#6c8ebf",  # blue
-        "cluster_listen_bg": "#f9f9f9",
-        "cluster_comp_border": "#d6b656",  # gold
-        "cluster_comp_bg": "#f9f9f9",
-        "cluster_label": "#636e72",  # muted gray
+        "component_fill": Theme.AGENT_COMPONENT_FILL,
+        "component_border": Theme.AGENT_COMPONENT_BORDER,
+        "cluster_sm_border": Theme.AGENT_CLUSTER_SM_BORDER,
+        "cluster_sm_bg": Theme.AGENT_CLUSTER_SM_BG,
+        "cluster_pub_border": Theme.AGENT_CLUSTER_PUB_BORDER,
+        "cluster_pub_bg": Theme.AGENT_CLUSTER_PUB_BG,
+        "cluster_listen_border": Theme.AGENT_CLUSTER_LISTEN_BORDER,
+        "cluster_listen_bg": Theme.AGENT_CLUSTER_LISTEN_BG,
+        "cluster_comp_border": Theme.AGENT_CLUSTER_COMP_BORDER,
+        "cluster_comp_bg": Theme.AGENT_CLUSTER_COMP_BG,
+        "cluster_label": Theme.AGENT_CLUSTER_LABEL,
     }
 
     def __init__(self) -> None:
@@ -53,11 +53,9 @@ class AgentVisualization(BaseVisualization):
         """Create a comprehensive visualization of the agent.
 
         Each included section (state machine, publishing, listening,
-        components) is rendered as a labelled cluster subgraph.
-
-        Note: for saved output, ``visualize()`` composites each section
-        as an independent LR image stacked vertically, so every section
-        keeps its natural horizontal flow while being left-aligned.
+        components) is rendered as a labelled cluster subgraph inside a
+        single LR graph.  For well-aligned saved output, use
+        ``visualize(save_file=True)`` which stacks sections vertically.
 
         Args:
             target: The agent instance to visualize.
@@ -139,124 +137,75 @@ class AgentVisualization(BaseVisualization):
         """Create and optionally save a comprehensive visualization.
 
         When *save_file* is ``True``, each section is rendered
-        independently with its own LR layout, then the images are
-        stacked vertically in a master TB graph.  This guarantees
-        left-aligned sections with correct horizontal flow inside each.
+        independently as an LR graph, then the SVGs are stacked
+        vertically into a single aligned output.
         """
         graph = self.create_visualization(target, **kwargs)
 
         if save_file:
             fname = filename or f"{target.__class__.__name__}_comprehensive"
-            self._save_composite(target, fname, output_dir, **kwargs)
+            self._save_stacked(target, fname, output_dir, **kwargs)
 
         return graph
 
     # ------------------------------------------------------------------
-    # Composite rendering
+    # Stacked rendering
     # ------------------------------------------------------------------
 
-    def _save_composite(
+    def _save_stacked(
         self,
         agent: Any,
         filename: str,
         output_dir: str,
         **kwargs: Any,
     ) -> str:
-        """Render each section as a standalone LR image, then stack them."""
-        include_sm = kwargs.pop("include_state_machine", True)
-        include_pub = kwargs.pop("include_publishing", True)
-        include_listen = kwargs.pop("include_listening", True)
-        include_comp = kwargs.pop("include_components", True)
-        show_current = kwargs.pop("show_current_state", True)
+        """Render each section as a standalone LR graph, stack vertically."""
+        _check_graphviz()
 
-        tmp_dir = tempfile.mkdtemp(prefix="agentspype_viz_")
-        section_paths: list[str] = []
+        section_graphs = self._build_section_graphs(agent, **kwargs)
+        if not section_graphs:
+            graph = self.create_visualization(agent, **kwargs)
+            return self.save_diagram(graph, filename, output_dir)
 
-        try:
-            if include_sm:
-                current = agent.machine.current_state if show_current else None
-                sm_graph = self.state_machine_viz.create_visualization(
-                    agent.machine, current_state=current, **kwargs
-                )
-                path = os.path.join(tmp_dir, "sm.png")
-                self._render_section(
-                    "State Machine",
-                    sm_graph,
-                    self._COLORS["cluster_sm_border"],
-                    self._COLORS["cluster_sm_bg"],
-                    path,
-                )
+        with tempfile.TemporaryDirectory(prefix="agentspype_viz_") as tmp:
+            # Render each section to a temp PNG
+            section_paths: list[str] = []
+            for i, (_label, wrapper) in enumerate(section_graphs):
+                path = os.path.join(tmp, f"sec_{i}.png")
+                wrapper.write_png(path)
                 section_paths.append(path)
 
-            if include_pub:
-                pub_graph = self.publishing_viz.create_visualization(
-                    type(agent.publishing), **kwargs
-                )
-                path = os.path.join(tmp_dir, "pub.png")
-                self._render_section(
-                    "Publishing",
-                    pub_graph,
-                    self._COLORS["cluster_pub_border"],
-                    self._COLORS["cluster_pub_bg"],
-                    path,
-                )
-                section_paths.append(path)
-
-            if include_listen:
-                listen_graph = self.listening_viz.create_visualization(
-                    type(agent.listening), **kwargs
-                )
-                path = os.path.join(tmp_dir, "listen.png")
-                self._render_section(
-                    "Listening",
-                    listen_graph,
-                    self._COLORS["cluster_listen_border"],
-                    self._COLORS["cluster_listen_bg"],
-                    path,
-                )
-                section_paths.append(path)
-
-            if include_comp:
-                comp_path = self._render_components_section(agent, tmp_dir)
-                if comp_path:
-                    section_paths.append(comp_path)
-
-            # Assemble sections inside a single agent container
+            # Assemble: TB graph with image nodes stacked via invisible edges
             master = pydot.Dot(
                 graph_type="digraph",
                 rankdir="TB",
                 bgcolor="transparent",
-                pad="0.2",
+                pad="0.1",
                 margin="0",
-                ranksep="0.1",
-                nodesep="0.1",
+                ranksep="0.02",
+                nodesep="0.0",
             )
 
             agent_cluster = pydot.Cluster(
                 "agent",
                 label=agent.__class__.__name__,
                 style="rounded,bold",
-                color="#2d3436",
-                bgcolor="#ffffff",
+                color=Theme.DARK_TEXT,
+                bgcolor=Theme.WHITE,
                 fontname=self.FONT_NAME,
                 fontsize="14",
-                fontcolor="#2d3436",
+                fontcolor=Theme.DARK_TEXT,
                 penwidth="2",
                 labeljust="l",
                 labelloc="t",
-                margin="16",
+                margin="8",
             )
 
             prev_id: str | None = None
             for i, img_path in enumerate(section_paths):
                 node_id = f"_sec_{i}"
                 agent_cluster.add_node(
-                    pydot.Node(
-                        node_id,
-                        shape="none",
-                        image=img_path,
-                        label="",
-                    )
+                    pydot.Node(node_id, shape="none", image=img_path, label="")
                 )
                 if prev_id is not None:
                     agent_cluster.add_edge(pydot.Edge(prev_id, node_id, style="invis"))
@@ -264,18 +213,77 @@ class AgentVisualization(BaseVisualization):
 
             master.add_subgraph(agent_cluster)
             return self.save_diagram(master, filename, output_dir)
-        finally:
-            shutil.rmtree(tmp_dir, ignore_errors=True)
 
-    def _render_section(
+    def _build_section_graphs(
+        self, agent: Any, **kwargs: Any
+    ) -> list[tuple[str, pydot.Dot]]:
+        """Build standalone wrapped graphs for each section."""
+        include_sm = kwargs.pop("include_state_machine", True)
+        include_pub = kwargs.pop("include_publishing", True)
+        include_listen = kwargs.pop("include_listening", True)
+        include_comp = kwargs.pop("include_components", True)
+        show_current = kwargs.pop("show_current_state", True)
+
+        sections: list[tuple[str, pydot.Dot]] = []
+
+        if include_sm:
+            current = agent.machine.current_state if show_current else None
+            sm_graph = self.state_machine_viz.create_visualization(
+                agent.machine, current_state=current, **kwargs
+            )
+            wrapper = self._make_section_wrapper(
+                "State Machine",
+                sm_graph,
+                self._COLORS["cluster_sm_border"],
+                self._COLORS["cluster_sm_bg"],
+            )
+            sections.append(("State Machine", wrapper))
+
+        if include_pub:
+            pub_graph = self.publishing_viz.create_visualization(
+                type(agent.publishing), **kwargs
+            )
+            wrapper = self._make_section_wrapper(
+                "Publishing",
+                pub_graph,
+                self._COLORS["cluster_pub_border"],
+                self._COLORS["cluster_pub_bg"],
+            )
+            sections.append(("Publishing", wrapper))
+
+        if include_listen:
+            listen_graph = self.listening_viz.create_visualization(
+                type(agent.listening), **kwargs
+            )
+            wrapper = self._make_section_wrapper(
+                "Listening",
+                listen_graph,
+                self._COLORS["cluster_listen_border"],
+                self._COLORS["cluster_listen_bg"],
+            )
+            sections.append(("Listening", wrapper))
+
+        if include_comp:
+            comp_graph = self._build_components_graph(agent)
+            if comp_graph:
+                wrapper = self._make_section_wrapper(
+                    "Components",
+                    comp_graph,
+                    self._COLORS["cluster_comp_border"],
+                    self._COLORS["cluster_comp_bg"],
+                )
+                sections.append(("Components", wrapper))
+
+        return sections
+
+    def _make_section_wrapper(
         self,
         label: str,
         source_graph: pydot.Dot,
         border_color: str,
         bg_color: str,
-        output_path: str,
-    ) -> None:
-        """Render a single section with a cluster border to PNG."""
+    ) -> pydot.Dot:
+        """Wrap a section graph in a standalone LR graph with cluster border."""
         wrapper = pydot.Dot(
             graph_type="digraph",
             rankdir="LR",
@@ -290,39 +298,15 @@ class AgentVisualization(BaseVisualization):
             "section", label, source_graph, border_color, bg_color
         )
         wrapper.add_subgraph(cluster)
-        wrapper.write_png(output_path)
+        return wrapper
 
-    def _render_components_section(self, agent: Any, tmp_dir: str) -> str | None:
-        """Render components cluster to PNG if the agent has any."""
+    def _build_components_graph(self, agent: Any) -> pydot.Dot | None:
+        """Build a standalone graph for the components section."""
         components = agent.get_components() if hasattr(agent, "get_components") else []
         if not components:
             return None
 
-        wrapper = pydot.Dot(
-            graph_type="digraph",
-            rankdir="LR",
-            bgcolor="transparent",
-            pad="0.1",
-            margin="0",
-        )
-        wrapper.obj_dict["attributes"]["fontname"] = self.FONT_NAME
-        wrapper.obj_dict["attributes"]["fontsize"] = self.FONT_SIZE
-
-        cluster = pydot.Cluster(
-            "components",
-            label="Components",
-            style="rounded",
-            color=self._COLORS["cluster_comp_border"],
-            bgcolor=self._COLORS["cluster_comp_bg"],
-            fontname=self.FONT_NAME,
-            fontsize=self.FONT_SIZE,
-            fontcolor=self._COLORS["cluster_label"],
-            penwidth="1.5",
-            labeljust="l",
-            labelloc="t",
-            margin="12",
-        )
-
+        graph = pydot.Dot(graph_type="digraph")
         for idx, component in enumerate(components):
             comp_label = (
                 component.name
@@ -330,7 +314,7 @@ class AgentVisualization(BaseVisualization):
                 else component.__class__.__name__
             )
             comp_node_id = f"comp_{idx}_{comp_label}"
-            cluster.add_node(
+            graph.add_node(
                 self.create_node(
                     node_id=comp_node_id,
                     label=comp_label,
@@ -338,11 +322,7 @@ class AgentVisualization(BaseVisualization):
                     color=self._COLORS["component_border"],
                 )
             )
-
-        wrapper.add_subgraph(cluster)
-        path = os.path.join(tmp_dir, "comp.png")
-        wrapper.write_png(path)
-        return path
+        return graph
 
     # ------------------------------------------------------------------
     # Helpers

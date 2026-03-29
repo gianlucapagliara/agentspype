@@ -18,11 +18,16 @@ from agentspype.agent.state_machine import AgentStateMachine
 from agentspype.agent.status import AgentStatus
 from agentspype.fsm import State
 from agentspype.visualization.agent_visualization import AgentVisualization
+from agentspype.visualization.base_visualization import (
+    GraphvizNotFoundError,
+    _check_graphviz,
+)
 from agentspype.visualization.cross_agent_visualization import CrossAgentVisualization
 from agentspype.visualization.listening_visualization import ListeningVisualization
 from agentspype.visualization.state_machine_visualization import (
     StateMachineVisualization,
 )
+from agentspype.visualization.theme import Theme
 
 # === Graph traversal helpers ===
 
@@ -1126,3 +1131,87 @@ class TestCrossAgentEmpty:
         node_names = {n.get_name().strip('"') for n in graph.get_node_list()}
         assert "agent_ProducerAgent" in node_names
         assert "agent_ConsumerAgent" in node_names
+
+
+# === 8. Graphviz Pre-flight Check ===
+
+
+class TestGraphvizPreflightCheck:
+    def test_check_passes_when_dot_available(self) -> None:
+        """_check_graphviz does not raise when dot is on PATH."""
+        from unittest.mock import patch
+
+        with patch(
+            "agentspype.visualization.base_visualization.shutil.which",
+            return_value="/usr/bin/dot",
+        ):
+            _check_graphviz()  # should not raise
+
+    def test_check_raises_when_dot_missing(self) -> None:
+        """_check_graphviz raises GraphvizNotFoundError when dot is missing."""
+        from unittest.mock import patch
+
+        with patch(
+            "agentspype.visualization.base_visualization.shutil.which",
+            return_value=None,
+        ):
+            with pytest.raises(
+                GraphvizNotFoundError, match="Graphviz 'dot' executable not found"
+            ):
+                _check_graphviz()
+
+    def test_save_diagram_checks_graphviz(self, tmp_path: str) -> None:
+        """save_diagram raises GraphvizNotFoundError before attempting to write."""
+        from unittest.mock import patch
+
+        graph = pydot.Dot(graph_type="digraph")
+        with patch(
+            "agentspype.visualization.base_visualization.shutil.which",
+            return_value=None,
+        ):
+            with pytest.raises(GraphvizNotFoundError):
+                AgentVisualization.save_diagram(graph, "test", str(tmp_path))
+
+
+# === 9. Centralized Theme ===
+
+
+class TestThemeCentralization:
+    def test_theme_values_match_visualizer_colors(self) -> None:
+        """Theme constants are correctly wired into visualizer _COLORS dicts."""
+        assert (
+            StateMachineVisualization._COLORS["initial_fill"] == Theme.SM_INITIAL_FILL
+        )
+        assert (
+            StateMachineVisualization._COLORS["internal_edge"] == Theme.SM_INTERNAL_EDGE
+        )
+        assert (
+            AgentVisualization._COLORS["cluster_sm_border"]
+            == Theme.AGENT_CLUSTER_SM_BORDER
+        )
+
+    def test_all_visualizers_use_theme(self) -> None:
+        """All _COLORS values across visualizers are present in Theme."""
+        from agentspype.visualization.cross_agent_visualization import (
+            CrossAgentVisualization,
+        )
+        from agentspype.visualization.listening_visualization import (
+            ListeningVisualization,
+        )
+        from agentspype.visualization.publishing_visualization import (
+            PublishingVisualization,
+        )
+
+        theme_values = {v for k, v in vars(Theme).items() if not k.startswith("_")}
+
+        for viz_cls in [
+            StateMachineVisualization,
+            PublishingVisualization,
+            ListeningVisualization,
+            AgentVisualization,
+            CrossAgentVisualization,
+        ]:
+            for key, color in viz_cls._COLORS.items():
+                assert color in theme_values, (
+                    f"{viz_cls.__name__}._COLORS['{key}'] = {color!r} is not in Theme"
+                )

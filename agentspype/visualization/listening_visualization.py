@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 import pydot
 
 from .base_visualization import BaseVisualization
+from .theme import Theme
 
 if TYPE_CHECKING:
     pass
@@ -23,17 +24,17 @@ class ListeningVisualization(BaseVisualization):
     """
 
     _COLORS = {
-        "listener_fill": "#dae8fc",  # soft blue (receiver)
-        "listener_border": "#6c8ebf",
-        "callback_fill": "#d5e8d4",  # soft green (action handler)
-        "callback_border": "#82b366",
-        "publisher_fill": "#e1d5e7",  # soft purple (external source)
-        "publisher_border": "#9673a6",
-        "empty_fill": "#ecf0f1",  # light gray (placeholder)
-        "empty_border": "#95a5a6",
-        "edge_calls": "#6c8ebf",  # blue for listener -> callback
-        "edge_publishes": "#9673a6",  # purple for publisher -> callback
-        "edge_label": "#636e72",  # muted gray
+        "listener_fill": Theme.LISTEN_LISTENER_FILL,
+        "listener_border": Theme.LISTEN_LISTENER_BORDER,
+        "callback_fill": Theme.LISTEN_CALLBACK_FILL,
+        "callback_border": Theme.LISTEN_CALLBACK_BORDER,
+        "publisher_fill": Theme.LISTEN_PUBLISHER_FILL,
+        "publisher_border": Theme.LISTEN_PUBLISHER_BORDER,
+        "empty_fill": Theme.LISTEN_EMPTY_FILL,
+        "empty_border": Theme.LISTEN_EMPTY_BORDER,
+        "edge_calls": Theme.LISTEN_EDGE_CALLS,
+        "edge_publishes": Theme.LISTEN_EDGE_PUBLISHES,
+        "edge_label": Theme.LISTEN_EDGE_LABEL,
     }
 
     def create_visualization(

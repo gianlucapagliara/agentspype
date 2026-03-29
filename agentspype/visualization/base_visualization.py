@@ -1,10 +1,29 @@
 """Base visualization functionality for agentspype."""
 
 import os
+import shutil
 from abc import ABC, abstractmethod
 from typing import Any
 
 import pydot
+
+
+class GraphvizNotFoundError(RuntimeError):
+    """Raised when the Graphviz ``dot`` executable is not found on ``$PATH``."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Graphviz 'dot' executable not found on $PATH. "
+            "Install it with: brew install graphviz (macOS), "
+            "apt-get install graphviz (Debian/Ubuntu), "
+            "or choco install graphviz (Windows)."
+        )
+
+
+def _check_graphviz() -> None:
+    """Raise :class:`GraphvizNotFoundError` if ``dot`` is not available."""
+    if shutil.which("dot") is None:
+        raise GraphvizNotFoundError()
 
 
 class BaseVisualization(ABC):
@@ -96,7 +115,13 @@ class BaseVisualization(ABC):
     def save_diagram(
         cls, graph: pydot.Dot, filename: str, output_dir: str = ".diagrams"
     ) -> str:
-        """Save the diagram to a file."""
+        """Save the diagram to a file.
+
+        Raises:
+            GraphvizNotFoundError: If the ``dot`` executable is not on ``$PATH``.
+        """
+        _check_graphviz()
+
         # Ensure output directory exists
         os.makedirs(output_dir, exist_ok=True)
 

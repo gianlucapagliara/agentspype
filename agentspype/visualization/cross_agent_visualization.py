@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 import pydot
 
 from .base_visualization import BaseVisualization
+from .theme import Theme
 
 if TYPE_CHECKING:
     from agentspype.agent.agent import Agent
@@ -21,14 +22,14 @@ class CrossAgentVisualization(BaseVisualization):
     """
 
     _COLORS = {
-        "agent_fill": "#f8d7da",  # soft pink
-        "agent_border": "#c0392b",  # dark red
-        "event_edge": "#27ae60",  # green for event wiring
-        "event_label": "#1e8449",  # dark green for edge labels
-        "parent_child_edge": "#8e44ad",  # purple for hierarchy
-        "external_fill": "#ecf0f1",  # light gray
-        "external_border": "#95a5a6",  # gray
-        "self_edge": "#2980b9",  # blue for self-wiring
+        "agent_fill": Theme.CROSS_AGENT_FILL,
+        "agent_border": Theme.CROSS_AGENT_BORDER,
+        "event_edge": Theme.CROSS_EVENT_EDGE,
+        "event_label": Theme.CROSS_EVENT_LABEL,
+        "parent_child_edge": Theme.CROSS_PARENT_CHILD_EDGE,
+        "external_fill": Theme.CROSS_EXTERNAL_FILL,
+        "external_border": Theme.CROSS_EXTERNAL_BORDER,
+        "self_edge": Theme.CROSS_SELF_EDGE,
     }
 
     def create_visualization(
