@@ -123,13 +123,7 @@ class AgentVisualization(BaseVisualization):
             graph.add_subgraph(cluster)
             first = self._first_node_id(sm_graph)
             if first:
-                self._add_hub_edge(
-                    graph,
-                    first,
-                    "cluster_state_machine",
-                    "state machine",
-                    self._COLORS["cluster_sm_border"],
-                )
+                self._add_hub_edge(graph, first, "cluster_state_machine")
 
         # --- Publishing ---
         if include_publishing:
@@ -146,13 +140,7 @@ class AgentVisualization(BaseVisualization):
             graph.add_subgraph(cluster)
             first = self._first_node_id(pub_graph)
             if first:
-                self._add_hub_edge(
-                    graph,
-                    first,
-                    "cluster_publishing",
-                    "publishing",
-                    self._COLORS["cluster_pub_border"],
-                )
+                self._add_hub_edge(graph, first, "cluster_publishing")
 
         # --- Listening ---
         if include_listening:
@@ -169,25 +157,13 @@ class AgentVisualization(BaseVisualization):
             graph.add_subgraph(cluster)
             first = self._first_node_id(listen_graph)
             if first:
-                self._add_hub_edge(
-                    graph,
-                    first,
-                    "cluster_listening",
-                    "listening",
-                    self._COLORS["cluster_listen_border"],
-                )
+                self._add_hub_edge(graph, first, "cluster_listening")
 
         # --- Components ---
         if include_components:
             first = self._add_components(agent, graph)
             if first:
-                self._add_hub_edge(
-                    graph,
-                    first,
-                    "cluster_components",
-                    "components",
-                    self._COLORS["cluster_comp_border"],
-                )
+                self._add_hub_edge(graph, first, "cluster_components")
 
         return graph
 
@@ -217,23 +193,17 @@ class AgentVisualization(BaseVisualization):
         graph: pydot.Dot,
         target_node: str,
         cluster_name: str,
-        label: str,
-        color: str,
     ) -> None:
-        """Add a labeled edge from the hub node into a section cluster."""
+        """Add a connector edge from the hub node into a section cluster."""
         graph.add_edge(
             pydot.Edge(
                 self._HUB_NODE_ID,
                 target_node,
-                label=f"  {label}  ",
                 lhead=cluster_name,
-                color=color,
-                fontcolor=self._COLORS["cluster_label"],
-                fontname=self.FONT_NAME,
-                fontsize=self.FONT_SIZE,
-                arrowhead="vee",
-                penwidth="1.2",
-                style="dashed",
+                color=Theme.LIGHT_GRAY_BORDER,
+                arrowhead="none",
+                penwidth="2",
+                style="tapered",
             )
         )
 
