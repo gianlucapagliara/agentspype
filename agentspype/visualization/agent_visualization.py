@@ -58,7 +58,7 @@ class AgentVisualization(BaseVisualization):
         include_state_machine: bool = True,
         include_publishing: bool = True,
         include_listening: bool = True,
-        include_components: bool = True,
+        include_components: bool = False,
         show_current_state: bool = True,
         **kwargs: Any,
     ) -> pydot.Dot:
@@ -90,19 +90,20 @@ class AgentVisualization(BaseVisualization):
 
         graph.obj_dict["attributes"]["rankdir"] = "LR"
         graph.obj_dict["attributes"]["compound"] = "true"
+        graph.obj_dict["attributes"]["splines"] = "ortho"
 
         # Hub node
         graph.add_node(
             pydot.Node(
                 self._HUB_NODE_ID,
                 label=agent_name,
-                shape="Mrecord",
-                style="filled,bold",
-                fillcolor=Theme.WHITE,
-                color=Theme.DARK_TEXT,
+                shape="rectangle",
+                style="filled,bold,rounded",
+                fillcolor=Theme.SOFT_BLUE_FILL,
+                color=Theme.SOFT_BLUE_BORDER,
                 fontname=self.FONT_NAME,
-                fontsize="12",
-                penwidth="2",
+                fontsize="14",
+                penwidth="2.5",
             )
         )
 

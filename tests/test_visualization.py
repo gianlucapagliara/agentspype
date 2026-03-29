@@ -159,7 +159,7 @@ class TestComponentVisualization:
     def test_component_nodes_in_diagram(self, component_agent: ComponentAgent) -> None:
         """Component nodes appear in the agent's comprehensive diagram."""
         viz = AgentVisualization()
-        graph = viz.create_visualization(component_agent)
+        graph = viz.create_visualization(component_agent, include_components=True)
 
         node_names = {node.get_name().strip('"') for node in _all_nodes(graph)}
         assert "comp_0_OrderComponent" in node_names
@@ -168,7 +168,7 @@ class TestComponentVisualization:
     def test_component_edges_in_diagram(self, component_agent: ComponentAgent) -> None:
         """Component nodes exist in the components cluster."""
         viz = AgentVisualization()
-        graph = viz.create_visualization(component_agent)
+        graph = viz.create_visualization(component_agent, include_components=True)
 
         node_names = {node.get_name().strip('"') for node in _all_nodes(graph)}
         assert "comp_0_OrderComponent" in node_names
@@ -204,7 +204,7 @@ class TestComponentVisualization:
 
         plain_agent.get_components = lambda: [Gadget()]  # type: ignore[assignment]
         viz = AgentVisualization()
-        graph = viz.create_visualization(plain_agent)
+        graph = viz.create_visualization(plain_agent, include_components=True)
 
         node_names = {node.get_name().strip('"') for node in _all_nodes(graph)}
         assert "comp_0_Gadget" in node_names
@@ -218,7 +218,7 @@ class TestComponentVisualization:
             MockComponent("Duplicate"),
         ]
         viz = AgentVisualization()
-        graph = viz.create_visualization(plain_agent)
+        graph = viz.create_visualization(plain_agent, include_components=True)
 
         node_names = [
             node.get_name().strip('"')
