@@ -98,12 +98,13 @@ class AgentVisualization(BaseVisualization):
                 self._HUB_NODE_ID,
                 label=agent_name,
                 shape="rectangle",
-                style="filled,bold,rounded",
-                fillcolor=Theme.SOFT_BLUE_FILL,
-                color=Theme.SOFT_BLUE_BORDER,
+                style="filled,rounded",
+                fillcolor=Theme.AGENT_HUB_FILL,
+                color=Theme.AGENT_HUB_BORDER,
                 fontname=self.FONT_NAME,
-                fontsize="14",
-                penwidth="2.5",
+                fontsize=self.FONT_SIZE,
+                penwidth="2",
+                margin="0.25,0.15",
             )
         )
 

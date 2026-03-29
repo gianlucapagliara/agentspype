@@ -43,7 +43,7 @@ class BaseVisualization(ABC):
             fontname=cls.FONT_NAME,
             fontsize=cls.FONT_SIZE,
             rankdir=cls.GRAPH_RANKDIR,
-            bgcolor="transparent",
+            bgcolor="white",
             pad="0.5",
         )
         return graph
@@ -81,6 +81,7 @@ class BaseVisualization(ABC):
             peripheries=peripheries,
             fillcolor=fillcolor,
             color=color,
+            margin="0.2,0.1",
         )
         return node
 
