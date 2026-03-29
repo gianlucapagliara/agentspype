@@ -12,6 +12,9 @@ from agentspype.runner.config.wizard import (
     extract_config_fields,
     load_agentspype_configs,
     resolve_agent_fqn,
+    save_agentspype_configs,
+    wizard_show,
+    wizard_validate,
     wrap_config_fields,
 )
 from agentspype.template.agent import TemplateAgent
@@ -235,20 +238,10 @@ class TestLoadAgentspypeConfigs:
 
 
 class TestSaveAgentspypeConfigs:
-    @pytest.fixture(autouse=True)
-    def _require_pydantic_wizard(self) -> None:
-        pytest.importorskip("pydantic_wizard")
-
-    def _import_save(self):  # noqa: ANN202
-        from agentspype.runner.config.wizard import save_agentspype_configs
-
-        return save_agentspype_configs
-
     def test_saves_single_config_as_flat_dict(self, tmp_path: Path) -> None:
-        save = self._import_save()
         configs = [{"agent_class": "A", "agent_path": "pkg.agent", "x": 1}]
         p = tmp_path / "out.yaml"
-        save(configs, p)
+        save_agentspype_configs(configs, p)
         raw = yaml.safe_load(p.read_text())
         # Single agent should be flat dict, no envelope
         assert isinstance(raw, dict)
@@ -256,13 +249,12 @@ class TestSaveAgentspypeConfigs:
         assert raw["agent_class"] == "A"
 
     def test_saves_multiple_configs_as_list(self, tmp_path: Path) -> None:
-        save = self._import_save()
         configs = [
             {"agent_class": "A"},
             {"agent_class": "B"},
         ]
         p = tmp_path / "out.yaml"
-        save(configs, p)
+        save_agentspype_configs(configs, p)
         raw = yaml.safe_load(p.read_text())
         # Multiple agents should be a YAML list at root, no envelope
         assert isinstance(raw, list)
@@ -272,13 +264,11 @@ class TestSaveAgentspypeConfigs:
         assert raw[1]["agent_class"] == "B"
 
     def test_creates_parent_directories(self, tmp_path: Path) -> None:
-        save = self._import_save()
         p = tmp_path / "deep" / "nested" / "dir" / "out.yaml"
-        save([{"agent_class": "A"}], p)
+        save_agentspype_configs([{"agent_class": "A"}], p)
         assert p.exists()
 
     def test_round_trip_preserves_data(self, tmp_path: Path) -> None:
-        save = self._import_save()
         original = [
             {
                 "agent_class": "MyAgent",
@@ -288,7 +278,7 @@ class TestSaveAgentspypeConfigs:
             }
         ]
         p = tmp_path / "roundtrip.yaml"
-        save(original, p)
+        save_agentspype_configs(original, p)
         loaded = load_agentspype_configs(p)
         assert len(loaded) == 1
         assert loaded[0]["agent_class"] == "MyAgent"
@@ -302,13 +292,7 @@ class TestSaveAgentspypeConfigs:
 
 
 class TestWizardShow:
-    @pytest.fixture(autouse=True)
-    def _require_pydantic_wizard(self) -> None:
-        pytest.importorskip("pydantic_wizard")
-
     def test_show_runs_without_error(self) -> None:
-        from agentspype.runner.config.wizard import wizard_show
-
         # Should not raise; TemplateAgent has TemplateConfiguration with no required fields.
         wizard_show("agentspype.template.agent.TemplateAgent")
 
@@ -319,13 +303,7 @@ class TestWizardShow:
 
 
 class TestWizardValidate:
-    @pytest.fixture(autouse=True)
-    def _require_pydantic_wizard(self) -> None:
-        pytest.importorskip("pydantic_wizard")
-
     def test_validate_valid_config_returns_true(self, tmp_path: Path) -> None:
-        from agentspype.runner.config.wizard import wizard_validate
-
         cfg = {
             "agent_class": "TemplateAgent",
             "agent_path": "agentspype.template.agent",
