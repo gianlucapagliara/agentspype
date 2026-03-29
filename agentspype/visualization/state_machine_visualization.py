@@ -17,8 +17,8 @@ class StateMachineVisualization(BaseVisualization):
 
     # Default edge style map for common transitions
     DEFAULT_EDGE_STYLE_MAP: dict[str, dict[str, str]] = {
-        "start": {"color": "green", "style": "dashed"},
-        "stop": {"color": "red", "style": "dashed"},
+        "start": {"color": "#82b366", "style": "dashed"},  # muted green
+        "stop": {"color": "#b85450", "style": "dashed"},  # muted red
     }
 
     # Color palette
@@ -84,26 +84,13 @@ class StateMachineVisualization(BaseVisualization):
 
         states_map = state_machine_class.states_map
 
-        # Add initial marker node (standard FSM convention: small black dot)
-        initial_node = pydot.Node(
-            "i",
-            shape="point",
-            width="0.2",
-            height="0.2",
-            color=self._COLORS["initial_border"],
-            fillcolor=self._COLORS["initial_border"],
-        )
-        dot_graph.add_node(initial_node)
-
         # Collect hook tables for annotation
         enter_hooks = getattr(state_machine_class, "_enter_hooks", {})
         exit_hooks = getattr(state_machine_class, "_exit_hooks", {})
 
         # Add state nodes
-        initial_state = None
         for state_id, state in states_map.items():
             if state.initial:
-                initial_state = state
                 fillcolor = self._COLORS["initial_fill"]
                 color = self._COLORS["initial_border"]
                 shape = "Mrecord"
@@ -149,18 +136,6 @@ class StateMachineVisualization(BaseVisualization):
                 fontsize=self.FONT_SIZE,
             )
             dot_graph.add_node(node)
-
-        # Add edge from initial marker to initial state
-        if initial_state:
-            dot_graph.add_edge(
-                pydot.Edge(
-                    "i",
-                    initial_state.id,
-                    arrowhead="vee",
-                    color=self._COLORS["initial_border"],
-                    penwidth="1.5",
-                )
-            )
 
         # Collect event hook tables for edge annotation
         event_hooks = getattr(state_machine_class, "_event_hooks", {})

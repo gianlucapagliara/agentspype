@@ -13,6 +13,17 @@ if TYPE_CHECKING:
 class PublishingVisualization(BaseVisualization):
     """Visualization for agent event publishing."""
 
+    _COLORS = {
+        "publisher_fill": "#d5e8d4",  # soft green (source)
+        "publisher_border": "#82b366",
+        "event_fill": "#dae8fc",  # soft blue (data)
+        "event_border": "#6c8ebf",
+        "empty_fill": "#ecf0f1",  # light gray (placeholder)
+        "empty_border": "#95a5a6",
+        "edge_publish": "#82b366",  # green for publish relationship
+        "edge_label": "#636e72",  # muted gray
+    }
+
     def create_visualization(
         self, target: Any, graph: pydot.Dot | None = None, **kwargs: Any
     ) -> pydot.Dot:
@@ -37,9 +48,8 @@ class PublishingVisualization(BaseVisualization):
         publisher_node = self.create_node(
             node_id=publishing_class.__name__,
             label=publishing_class.__name__,
-            fillcolor="lightgreen",
-            color="darkgreen",
-            final=True,
+            fillcolor=self._COLORS["publisher_fill"],
+            color=self._COLORS["publisher_border"],
         )
         graph.add_node(publisher_node)
 
@@ -49,9 +59,9 @@ class PublishingVisualization(BaseVisualization):
             no_events_node = self.create_node(
                 node_id="no_events",
                 label="No Events",
-                fillcolor="lightgray",
-                color="gray",
-                style="rounded, filled, dotted",
+                fillcolor=self._COLORS["empty_fill"],
+                color=self._COLORS["empty_border"],
+                style="filled, dashed",
             )
             graph.add_node(no_events_node)
 
@@ -60,8 +70,8 @@ class PublishingVisualization(BaseVisualization):
                 source=publishing_class.__name__,
                 target="no_events",
                 label="publishes",
-                style="dotted",
-                color="gray",
+                style="dashed",
+                color=self._COLORS["empty_border"],
             )
             graph.add_edge(no_events_edge)
         else:
@@ -80,15 +90,11 @@ class PublishingVisualization(BaseVisualization):
                 else:
                     label = display_name
 
-                event_node = pydot.Node(
-                    event_name,
+                event_node = self.create_node(
+                    node_id=event_name,
                     label=label,
-                    shape="Mrecord",
-                    style="filled",
-                    fontname=self.FONT_NAME,
-                    fontsize=self.FONT_SIZE,
-                    fillcolor="lightblue",
-                    color="darkblue",
+                    fillcolor=self._COLORS["event_fill"],
+                    color=self._COLORS["event_border"],
                 )
                 graph.add_node(event_node)
 
@@ -97,8 +103,7 @@ class PublishingVisualization(BaseVisualization):
                     source=publishing_class.__name__,
                     target=event_name,
                     label="publishes",
-                    style="solid",
-                    color="darkgreen",
+                    color=self._COLORS["edge_publish"],
                 )
                 graph.add_edge(publish_edge)
 

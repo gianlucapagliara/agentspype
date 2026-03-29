@@ -22,6 +22,20 @@ class ListeningVisualization(BaseVisualization):
     diagram compact while faithfully showing every subscription relationship.
     """
 
+    _COLORS = {
+        "listener_fill": "#dae8fc",  # soft blue (receiver)
+        "listener_border": "#6c8ebf",
+        "callback_fill": "#d5e8d4",  # soft green (action handler)
+        "callback_border": "#82b366",
+        "publisher_fill": "#e1d5e7",  # soft purple (external source)
+        "publisher_border": "#9673a6",
+        "empty_fill": "#ecf0f1",  # light gray (placeholder)
+        "empty_border": "#95a5a6",
+        "edge_calls": "#6c8ebf",  # blue for listener -> callback
+        "edge_publishes": "#9673a6",  # purple for publisher -> callback
+        "edge_label": "#636e72",  # muted gray
+    }
+
     def create_visualization(
         self, target: Any, graph: pydot.Dot | None = None, **kwargs: Any
     ) -> pydot.Dot:
@@ -40,9 +54,8 @@ class ListeningVisualization(BaseVisualization):
         listener_node = self.create_node(
             node_id=listening_class.__name__,
             label=listening_class.__name__,
-            fillcolor="lightblue",
-            color="darkblue",
-            final=True,
+            fillcolor=self._COLORS["listener_fill"],
+            color=self._COLORS["listener_border"],
         )
         graph.add_node(listener_node)
 
@@ -58,9 +71,9 @@ class ListeningVisualization(BaseVisualization):
         no_events_node = self.create_node(
             node_id="no_subscriptions",
             label="No Subscriptions",
-            fillcolor="lightgray",
-            color="gray",
-            style="rounded, filled, dotted",
+            fillcolor=self._COLORS["empty_fill"],
+            color=self._COLORS["empty_border"],
+            style="filled, dashed",
         )
         graph.add_node(no_events_node)
         graph.add_edge(
@@ -68,8 +81,8 @@ class ListeningVisualization(BaseVisualization):
                 source=listener_name,
                 target="no_subscriptions",
                 label="listens to",
-                style="dotted",
-                color="gray",
+                style="dashed",
+                color=self._COLORS["empty_border"],
             )
         )
 
@@ -88,8 +101,8 @@ class ListeningVisualization(BaseVisualization):
                 self.create_node(
                     node_id=subscription_name,
                     label=subscription_name,
-                    fillcolor="lightgreen",
-                    color="darkgreen",
+                    fillcolor=self._COLORS["callback_fill"],
+                    color=self._COLORS["callback_border"],
                 )
             )
             graph.add_edge(
@@ -97,8 +110,7 @@ class ListeningVisualization(BaseVisualization):
                     source=listener_name,
                     target=subscription_name,
                     label="calls",
-                    style="solid",
-                    color="darkblue",
+                    color=self._COLORS["edge_calls"],
                 )
             )
 
@@ -137,8 +149,8 @@ class ListeningVisualization(BaseVisualization):
                 self.create_node(
                     node_id=publisher_node_id,
                     label=publisher_name,
-                    fillcolor="lightcyan",
-                    color="darkgreen",
+                    fillcolor=self._COLORS["publisher_fill"],
+                    color=self._COLORS["publisher_border"],
                 )
             )
 
@@ -147,7 +159,6 @@ class ListeningVisualization(BaseVisualization):
                 source=publisher_node_id,
                 target=target_node_id,
                 label="publishes",
-                style="solid",
-                color="darkgreen",
+                color=self._COLORS["edge_publishes"],
             )
         )

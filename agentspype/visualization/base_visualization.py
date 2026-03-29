@@ -21,10 +21,11 @@ class BaseVisualization(ABC):
         graph = pydot.Dot(
             name,
             graph_type=graph_type,
-            label=name,
             fontname=cls.FONT_NAME,
             fontsize=cls.FONT_SIZE,
             rankdir=cls.GRAPH_RANKDIR,
+            bgcolor="transparent",
+            pad="0.5",
         )
         return graph
 
@@ -33,9 +34,9 @@ class BaseVisualization(ABC):
         cls,
         node_id: str,
         label: str,
-        shape: str = "rectangle",
-        style: str = "rounded, filled",
-        final: bool = False,
+        shape: str = "Mrecord",
+        style: str = "filled",
+        peripheries: int = 1,
         fillcolor: str = "white",
         color: str = "black",
     ) -> pydot.Node:
@@ -44,13 +45,12 @@ class BaseVisualization(ABC):
         Args:
             node_id: Unique identifier for the node within the graph.
             label: Display text shown inside the node.
-            shape: Graphviz node shape (e.g. ``"rectangle"``, ``"ellipse"``).
+            shape: Graphviz node shape (e.g. ``"Mrecord"``, ``"rectangle"``).
             style: Comma-separated Graphviz style attributes
-                (e.g. ``"rounded, filled"``).
+                (e.g. ``"filled"``).
+            peripheries: Number of node borders (``2`` for final/terminal).
             fillcolor: Background fill colour of the node.
             color: Border colour of the node.
-            final: If ``True``, the node is drawn with a double border
-                (``peripheries=2``) to indicate a terminal/final element.
         """
         node = pydot.Node(
             node_id,
@@ -59,7 +59,7 @@ class BaseVisualization(ABC):
             style=style,
             fontname=cls.FONT_NAME,
             fontsize=cls.FONT_SIZE,
-            peripheries=2 if final else 1,
+            peripheries=peripheries,
             fillcolor=fillcolor,
             color=color,
         )
@@ -72,7 +72,10 @@ class BaseVisualization(ABC):
         target: str,
         label: str = "",
         style: str = "solid",
-        color: str = "black",
+        color: str = "#2d3436",
+        arrowhead: str = "vee",
+        penwidth: str = "1.2",
+        fontcolor: str = "#636e72",
     ) -> pydot.Edge:
         """Create a styled edge for the graph."""
         edge = pydot.Edge(
@@ -83,6 +86,9 @@ class BaseVisualization(ABC):
             style=style,
             fontname=cls.FONT_NAME,
             fontsize=cls.FONT_SIZE,
+            arrowhead=arrowhead,
+            penwidth=penwidth,
+            fontcolor=fontcolor,
         )
         return edge
 

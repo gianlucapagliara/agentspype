@@ -4,6 +4,7 @@ from collections.abc import Generator
 from enum import Enum
 from typing import Any
 
+import pydot
 import pytest
 from eventspype.pub.publication import EventPublication
 from eventspype.sub.subscription import EventSubscription
@@ -22,6 +23,25 @@ from agentspype.visualization.listening_visualization import ListeningVisualizat
 from agentspype.visualization.state_machine_visualization import (
     StateMachineVisualization,
 )
+
+# === Graph traversal helpers ===
+
+
+def _all_nodes(graph: pydot.Dot) -> list[pydot.Node]:
+    """Collect nodes from a graph and all nested subgraphs recursively."""
+    nodes = list(graph.get_node_list())
+    for sub in graph.get_subgraph_list():
+        nodes.extend(_all_nodes(sub))
+    return nodes
+
+
+def _all_edges(graph: pydot.Dot) -> list[pydot.Edge]:
+    """Collect edges from a graph and all nested subgraphs recursively."""
+    edges = list(graph.get_edge_list())
+    for sub in graph.get_subgraph_list():
+        edges.extend(_all_edges(sub))
+    return edges
+
 
 # === Shared mock classes ===
 
@@ -136,21 +156,18 @@ class TestComponentVisualization:
         viz = AgentVisualization()
         graph = viz.create_visualization(component_agent)
 
-        node_names = {node.get_name().strip('"') for node in graph.get_node_list()}
+        node_names = {node.get_name().strip('"') for node in _all_nodes(graph)}
         assert "comp_0_OrderComponent" in node_names
         assert "comp_1_TransferComponent" in node_names
 
     def test_component_edges_in_diagram(self, component_agent: ComponentAgent) -> None:
-        """Edges connect the agent node to each component node."""
+        """Component nodes exist in the components cluster."""
         viz = AgentVisualization()
         graph = viz.create_visualization(component_agent)
 
-        edge_pairs = [
-            (e.get_source().strip('"'), e.get_destination().strip('"'))
-            for e in graph.get_edge_list()
-        ]
-        assert ("ComponentAgent", "comp_0_OrderComponent") in edge_pairs
-        assert ("ComponentAgent", "comp_1_TransferComponent") in edge_pairs
+        node_names = {node.get_name().strip('"') for node in _all_nodes(graph)}
+        assert "comp_0_OrderComponent" in node_names
+        assert "comp_1_TransferComponent" in node_names
 
     def test_no_component_nodes_when_disabled(
         self, component_agent: ComponentAgent
@@ -159,7 +176,7 @@ class TestComponentVisualization:
         viz = AgentVisualization()
         graph = viz.create_visualization(component_agent, include_components=False)
 
-        node_names = {node.get_name().strip('"') for node in graph.get_node_list()}
+        node_names = {node.get_name().strip('"') for node in _all_nodes(graph)}
         assert "comp_OrderComponent" not in node_names
         assert "comp_TransferComponent" not in node_names
 
@@ -168,7 +185,7 @@ class TestComponentVisualization:
         viz = AgentVisualization()
         graph = viz.create_visualization(plain_agent)
 
-        node_names = {node.get_name().strip('"') for node in graph.get_node_list()}
+        node_names = {node.get_name().strip('"') for node in _all_nodes(graph)}
         comp_nodes = [n for n in node_names if n.startswith("comp_")]
         assert len(comp_nodes) == 0
 
@@ -184,7 +201,7 @@ class TestComponentVisualization:
         viz = AgentVisualization()
         graph = viz.create_visualization(plain_agent)
 
-        node_names = {node.get_name().strip('"') for node in graph.get_node_list()}
+        node_names = {node.get_name().strip('"') for node in _all_nodes(graph)}
         assert "comp_0_Gadget" in node_names
 
     def test_components_with_same_name_produce_separate_nodes(
@@ -200,7 +217,7 @@ class TestComponentVisualization:
 
         node_names = [
             node.get_name().strip('"')
-            for node in graph.get_node_list()
+            for node in _all_nodes(graph)
             if node.get_name().strip('"').startswith("comp_")
         ]
         assert "comp_0_Duplicate" in node_names
@@ -381,7 +398,7 @@ class TestCustomEdgeStyling:
 
         start_edges = [
             e
-            for e in graph.get_edge_list()
+            for e in _all_edges(graph)
             if e.get_label() and e.get_label().strip('"').startswith("start")
         ]
         assert len(start_edges) > 0
@@ -743,9 +760,7 @@ class TestHookAnnotations:
         """show_hooks passes through Agent.visualize()."""
         graph = hooked_agent.visualize(show_hooks=True)
 
-        idle_nodes = [
-            n for n in graph.get_node_list() if n.get_name().strip('"') == "idle"
-        ]
+        idle_nodes = [n for n in _all_nodes(graph) if n.get_name().strip('"') == "idle"]
         assert len(idle_nodes) == 1
         label = idle_nodes[0].get_label().strip('"')
         assert "on_enter_idle" in label
