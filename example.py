@@ -35,8 +35,9 @@ class ExampleStateMachine(AgentStateMachine):
         | processing.to(failed)
         | waiting.to(failed)
         | completed.to(end)
+        | failed.to(end)
     )
-    end = failed.to(end) | completed.to(end)
+    finish = failed.to(end) | completed.to(end)
 
     def after_transition(self, event: str, state: State) -> None:
         """Handle post-transition actions."""

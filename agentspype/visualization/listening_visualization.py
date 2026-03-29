@@ -18,7 +18,7 @@ class ListeningVisualization(BaseVisualization):
     When multiple event subscriptions reference the same publisher class, a
     single publisher node is created in the graph (keyed by the class name).
     However, each subscription still produces its own edge from that publisher
-    node to the corresponding callback (or event-tag) node.  This keeps the
+    node to the corresponding callback node.  This keeps the
     diagram compact while faithfully showing every subscription relationship.
     """
 
@@ -102,52 +102,16 @@ class ListeningVisualization(BaseVisualization):
                 )
             )
 
-            event_tag = details.get("event_tag") if isinstance(details, dict) else None
             publisher_class = (
                 details.get("publisher_class") if isinstance(details, dict) else None
             )
 
-            tag_node_id = self._add_event_tag(graph, event_tag, subscription_name)
             self._add_publisher(
                 graph,
                 publisher_class,
                 seen_publishers,
-                tag_node_id or subscription_name,
+                subscription_name,
             )
-
-    def _add_event_tag(
-        self,
-        graph: pydot.Dot,
-        event_tag: Any,
-        subscription_name: str,
-    ) -> str | None:
-        """Add an event-tag node if available. Returns the tag node ID or None."""
-        if not event_tag:
-            return None
-
-        tag_str = (
-            str(event_tag.value) if hasattr(event_tag, "value") else str(event_tag)
-        )
-        tag_node_id = f"tag_{tag_str}"
-
-        graph.add_node(
-            self.create_node(
-                node_id=tag_node_id,
-                label=tag_str,
-                fillcolor="lightyellow",
-                color="orange",
-            )
-        )
-        graph.add_edge(
-            self.create_edge(
-                source=tag_node_id,
-                target=subscription_name,
-                label="triggers",
-                style="dashed",
-                color="orange",
-            )
-        )
-        return tag_node_id
 
     def _add_publisher(
         self,

@@ -225,10 +225,12 @@ class CrossAgentVisualization(BaseVisualization):
         return getattr(subscription, "publisher_class", None)
 
     def _get_event_tag(self, subscription: Any) -> Any:
-        """Extract event tag from a subscription (object or dict)."""
+        """Extract original event tag (enum member) from a subscription."""
         if isinstance(subscription, dict):
             return subscription.get("event_tag")
-        return getattr(subscription, "event_tag", None)
+        return getattr(subscription, "original_tag", None) or getattr(
+            subscription, "event_tag", None
+        )
 
     def _format_event_tag(self, event_tag: Any) -> str:
         """Format an event tag for display."""
@@ -238,8 +240,8 @@ class CrossAgentVisualization(BaseVisualization):
 
     def _format_single_tag(self, tag: Any) -> str:
         """Format a single event tag value."""
-        if hasattr(tag, "value"):
-            return str(tag.value)
+        if hasattr(tag, "name"):
+            return str(tag.name)
         return str(tag)
 
     def _add_external_publisher_node(
