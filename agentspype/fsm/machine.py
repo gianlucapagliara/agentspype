@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import deque
 from typing import Any
 
 from agentspype.fsm.state import State, StateTransitions
@@ -426,6 +427,8 @@ class StateMachine(metaclass=StateMachineMeta):
         if initial is None:
             raise ValueError(f"{self.__class__.__name__}: No initial state defined")
         self._current_state = initial
+        self._processing: bool = False
+        self._queue: deque[tuple[str, bool, dict[str, Any]]] = deque()
 
     # --- Event dispatch (hot path) ---
 
@@ -487,13 +490,41 @@ class StateMachine(metaclass=StateMachineMeta):
     def send(self, event: str, *, f: bool = False, **kwargs: Any) -> Any:
         """Dispatch an event to the state machine.
 
+        Implements Run-To-Completion (RTC) semantics: if called while a
+        transition is already in progress (e.g. from an ``on_enter_*`` hook),
+        the event is queued and processed FIFO after the current transition
+        completes.
+
         Args:
             event: The event name to fire.
-            f: Force flag - bypasses guard conditions.
-            **kwargs: Passed to ``on_<event>`` hooks.
+            f: Force flag - bypasses guard conditions and source-state check.
+            **kwargs: Passed to ``on_<event>`` and hook methods.
 
         Returns:
-            True if a transition was taken, False otherwise.
+            True if a transition was taken (or queued for deferred execution),
+            False otherwise.
+        """
+        if self._current_state.final:
+            return False
+
+        if self._processing:
+            self._queue.append((event, f, kwargs))
+            return True
+
+        try:
+            result = self._attempt_transition(event, f=f, **kwargs)
+            self._drain_queue()
+        except BaseException:
+            self._queue.clear()
+            raise
+        return result
+
+    def _attempt_transition(
+        self, event: str, *, f: bool = False, **kwargs: Any
+    ) -> bool:
+        """Try to find and execute a transition for the given event.
+
+        Returns True if a transition was taken, False otherwise.
         """
         if self._current_state.final:
             return False
@@ -508,10 +539,29 @@ class StateMachine(metaclass=StateMachineMeta):
         for transition in candidates:
             if not f and not self._check_guards(transition):
                 continue
-            self._execute_transition(event, transition, **kwargs)
+            self._processing = True
+            try:
+                self._execute_transition(event, transition, **kwargs)
+            finally:
+                self._processing = False
             return True
 
         return False
+
+    def _drain_queue(self) -> None:
+        """Process all queued events FIFO until the queue is empty or
+        the machine reaches a final state.
+
+        If a hook raises during drain, all remaining queued events are
+        discarded and the exception propagates to the original ``send()``
+        caller.
+        """
+        while self._queue:
+            if self._current_state.final:
+                self._queue.clear()
+                return
+            event, f, kwargs = self._queue.popleft()
+            self._attempt_transition(event, f=f, **kwargs)
 
     # --- Descriptors (work at both class and instance level) ---
 
