@@ -16,7 +16,8 @@ dependencies = [
 
 [project.optional-dependencies]
 clock = ["chronopype>=0.7.0,<1"]
-wizard = ["pydantic-wizard>=0.2.2,<1"]
+wizard = ["pydantic-wizard>=0.3.0,<1"]
+ui = ["pydantic-wizard[web]>=0.3.0,<1"]
 service = ["processpype>=2.0.0"]
 
 [project.scripts]
@@ -38,7 +39,7 @@ dev = [
     "httpx>=0.27",
     "ruff>=0.8.4",
     "pre-commit>=4.0",
-    "pydantic-wizard>=0.2.2,<1",
+    "pydantic-wizard>=0.3.0,<1",
 ]
 docs = ["mkdocs>=1.6"]
 
