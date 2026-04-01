@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from typing import Any
 
 import streamlit as st
 
@@ -13,6 +14,15 @@ def _get_module_paths() -> list[str]:
     if args:
         return args[0].split(",")
     return []
+
+
+def _instantiate(agent_class: type) -> Any:
+    """Instantiate an agent with its default configuration."""
+    from agentspype.agent.agent import Agent
+
+    cls: type[Agent] = agent_class
+    config = cls.definition.configuration_class()
+    return cls(config)
 
 
 def _render_agent_page(agent_class: type) -> None:
@@ -27,8 +37,9 @@ def _render_agent_page(agent_class: type) -> None:
     # --- State machine diagram ---
     st.subheader("State Machine")
     try:
+        instance = _instantiate(agent_class)
         viz = AgentVisualization()
-        graph = viz.visualize(agent_class)
+        graph = viz.visualize(instance)
         st.graphviz_chart(graph.to_string())
     except Exception as exc:
         st.warning(f"Could not render diagram: {exc}")
@@ -68,8 +79,9 @@ def _render_overview_page(agent_classes: list[type]) -> None:
     st.header("Cross-Agent Overview")
 
     try:
+        instances = [_instantiate(cls) for cls in agent_classes]
         viz = CrossAgentVisualization()
-        graph = viz.visualize(agent_classes)
+        graph = viz.visualize(instances)
         st.graphviz_chart(graph.to_string())
     except Exception as exc:
         st.warning(f"Could not render overview diagram: {exc}")
@@ -84,7 +96,6 @@ def _render_config_page(agent_classes: list[type]) -> None:
     import os
     import tempfile
     from pathlib import Path
-    from typing import Any
 
     import yaml
     from pydantic import ValidationError
