@@ -114,6 +114,30 @@ def build_parser() -> argparse.ArgumentParser:
         help="Skip cross-agent relationship diagram generation.",
     )
 
+    # -- ui -----------------------------------------------------------------
+    ui_parser = subparsers.add_parser(
+        "ui", help="Launch interactive Streamlit UI for agent inspection and config."
+    )
+    ui_parser.add_argument(
+        "modules",
+        type=str,
+        nargs="+",
+        help="Dotted module path(s) containing Agent subclasses.",
+    )
+    ui_parser.add_argument(
+        "--host",
+        type=str,
+        default="127.0.0.1",
+        help="Host to bind the UI server (default: 127.0.0.1).",
+    )
+    ui_parser.add_argument(
+        "-p",
+        "--port",
+        type=int,
+        default=8765,
+        help="Port for the UI server (default: 8765).",
+    )
+
     # -- config -------------------------------------------------------------
     config_parser = subparsers.add_parser(
         "config",
@@ -246,6 +270,22 @@ def _plot_command(args: argparse.Namespace) -> None:
         raise SystemExit(1) from exc
 
 
+def _ui_command(args: argparse.Namespace) -> None:
+    try:
+        from agentspype.ui.app import launch
+    except ImportError:
+        logging.getLogger(__name__).error(
+            "Streamlit is required for the UI. Install with: pip install agentspype[ui]"
+        )
+        raise SystemExit(1) from None
+
+    try:
+        launch(args.modules, host=args.host, port=args.port)
+    except Exception as exc:
+        logging.getLogger(__name__).error("UI failed: %s", exc)
+        raise SystemExit(1) from exc
+
+
 def _config_command(args: argparse.Namespace) -> None:
     try:
         from agentspype.runner.config.wizard import (
@@ -307,6 +347,8 @@ def main() -> None:
         _create_command(args)
     elif args.command == "plot":
         _plot_command(args)
+    elif args.command == "ui":
+        _ui_command(args)
     elif args.command == "config":
         _config_command(args)
 
