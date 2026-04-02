@@ -176,3 +176,8 @@ cython_debug/
 # Other
 **/.DS_Store
 .vscode/*
+
+# IDE and AI tool config
+.cursor/
+.mcp.json
+.opencode.json

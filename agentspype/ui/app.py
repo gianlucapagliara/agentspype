@@ -31,7 +31,7 @@ def launch(
             "Streamlit is required for the UI. Install with: pip install agentspype[ui]"
         ) from e
 
-    app_path = Path(__file__).parent / "_streamlit_app.py"
+    app_path = Path(__file__).parent / "streamlit" / "main.py"
     modules_arg = ",".join(module_paths)
     subprocess.run(
         [
